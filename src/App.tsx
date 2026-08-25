@@ -6,7 +6,8 @@ import {
   DirectThread, 
   UserState, 
   Reply,
-  LanternNotification
+  LanternNotification,
+  HealingNote
 } from './types';
 import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
@@ -28,6 +29,7 @@ import { AmbientSoundModal } from './components/AmbientSoundModal';
 import { CampusGlobeView } from './components/CampusGlobeView';
 import { PeerMentorModal } from './components/PeerMentorModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { HealingFeedbackModal } from './components/HealingFeedbackModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
@@ -209,9 +211,88 @@ export default function App() {
   const [isAmbientModalOpen, setIsAmbientModalOpen] = useState(false);
   const [isPeerMentorModalOpen, setIsPeerMentorModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [isHealingModalOpen, setIsHealingModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
+
+  // Healing Notes & Feedback State
+  const [healingNotes, setHealingNotes] = useState<HealingNote[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_healing_notes');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse healing notes from localStorage:', e);
+    }
+    return [
+      {
+        id: 'note-1',
+        category: 'community_kindness',
+        senderName: 'Một người bạn đi ngang qua',
+        schoolName: 'THPT Chuyên Hà Nội - Amsterdam',
+        message: 'Dù ngày hôm nay có mệt mỏi thế nào, bạn cũng đã làm rất tốt rồi. Đừng quên uống một ly nước ấm và ngủ sớm nhé! 🌿',
+        createdAt: Date.now() - 7200000,
+        likesCount: 18,
+        tagColor: 'emerald'
+      },
+      {
+        id: 'note-2',
+        category: 'dev_thanks',
+        senderName: 'Cậu bạn khối A',
+        schoolName: 'Đại học Bách Khoa Hà Nội',
+        message: 'Cảm ơn Dev Team đã tạo ra một góc trú ẩn không phán xét. Những đêm áp lực đồ án vào đây đọc thư thấy nhẹ nhõm hơn nhiều.',
+        createdAt: Date.now() - 14400000,
+        likesCount: 24,
+        tagColor: 'amber'
+      },
+      {
+        id: 'note-3',
+        category: 'community_kindness',
+        senderName: 'Họa sĩ mộng mơ #204',
+        schoolName: 'Đại học Kiến Trúc TP.HCM',
+        message: 'Hoa sẽ nở đúng mùa, và bạn cũng sẽ tỏa sáng theo cách riêng của mình. Hãy vững tin nhé! ✨',
+        createdAt: Date.now() - 28800000,
+        likesCount: 31,
+        tagColor: 'rose'
+      },
+      {
+        id: 'note-4',
+        category: 'idea_feedback',
+        senderName: 'Peer Listener K23',
+        schoolName: 'ĐH KHXH&NV - ĐHQG TP.HCM',
+        message: 'Hy vọng app sẽ phát triển thêm các workshop nhỏ về kỹ năng lắng nghe và sơ cứu tâm lý cho các bạn học sinh.',
+        createdAt: Date.now() - 43200000,
+        likesCount: 15,
+        tagColor: 'sky'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_healing_notes', JSON.stringify(healingNotes));
+    } catch (e) {
+      console.warn('Failed to save healing notes to localStorage:', e);
+    }
+  }, [healingNotes]);
+
+  const handleAddHealingNote = (newNoteData: Omit<HealingNote, 'id' | 'createdAt' | 'likesCount'>) => {
+    const newNote: HealingNote = {
+      ...newNoteData,
+      id: `healing-note-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: Date.now(),
+      likesCount: 1,
+    };
+    setHealingNotes(prev => [newNote, ...prev]);
+  };
+
+  const handleLikeHealingNote = (noteId: string) => {
+    setHealingNotes(prev =>
+      prev.map(note =>
+        note.id === noteId ? { ...note, likesCount: note.likesCount + 1 } : note
+      )
+    );
+  };
 
   // Notifications State
   const [notifications, setNotifications] = useState<LanternNotification[]>(() => {
@@ -1451,6 +1532,7 @@ export default function App() {
         openAmbientModal={() => setIsAmbientModalOpen(true)}
         openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
         openNotificationsModal={() => setIsNotificationsModalOpen(true)}
+        openHealingModal={() => setIsHealingModalOpen(true)}
         unreadNotificationsCount={notifications.filter(n => !n.isRead).length}
         isDesktopCollapsed={isSidebarCollapsed}
         setIsDesktopCollapsed={setIsSidebarCollapsed}
@@ -1813,6 +1895,16 @@ export default function App() {
         onMarkAllAsRead={handleMarkAllNotificationsAsRead}
         onClearAll={handleClearAllNotifications}
         onSelectNotification={handleSelectNotification}
+      />
+
+      <HealingFeedbackModal
+        isOpen={isHealingModalOpen}
+        onClose={() => setIsHealingModalOpen(false)}
+        notes={healingNotes}
+        onAddNote={handleAddHealingNote}
+        onLikeNote={handleLikeHealingNote}
+        currentSchool={selectedSchool}
+        userState={userState}
       />
     </div>
   );

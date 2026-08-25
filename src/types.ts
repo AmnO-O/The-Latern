@@ -208,3 +208,17 @@ export interface LanternNotification {
   replyId?: string;
   schoolName?: string;
 }
+
+export type HealingCategory = 'community_kindness' | 'dev_thanks' | 'idea_feedback';
+
+export interface HealingNote {
+  id: string;
+  category: HealingCategory;
+  senderName: string;
+  schoolName?: string;
+  message: string;
+  createdAt: number;
+  likesCount: number;
+  tagColor?: 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
+}
+

@@ -22,7 +22,8 @@ import {
   Radio,
   HeartHandshake,
   Sparkles,
-  Bell
+  Bell,
+  MessageCircleHeart
 } from 'lucide-react';
 import { ActiveTab, School, UserState } from '../types';
 import { loginWithGoogle, logout } from '../lib/firebase';
@@ -44,6 +45,7 @@ interface NavbarProps {
   openAmbientModal?: () => void;
   openPeerMentorModal?: () => void;
   openNotificationsModal?: () => void;
+  openHealingModal?: () => void;
   unreadNotificationsCount?: number;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
@@ -64,6 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openAmbientModal,
   openPeerMentorModal,
   openNotificationsModal,
+  openHealingModal,
   unreadNotificationsCount = 0,
   isDesktopCollapsed = false,
   setIsDesktopCollapsed
@@ -343,21 +346,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-xl text-xs font-semibold transition-all ${
               userState.isPeerMentor
                 ? 'bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 font-bold'
-                : 'bg-[#FAF9F6] dark:bg-[#20281F] text-[#2A4228] dark:text-[#8BA888] border border-[#DCE4D8] dark:border-[#3A4738] hover:bg-[#EAF0E8]'
+                : 'text-[var(--text-muted)] hover:bg-[#EAF0E8]/70 dark:hover:bg-white/5 hover:text-[var(--text-primary)]'
             }`}
             title="Đăng ký làm Người Lắng Nghe Đồng Hành (Peer Mentor)"
           >
             <div className="flex items-center gap-3.5">
               <HeartHandshake className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               {!isCollapsed && (
-                <span>{userState.isPeerMentor ? '🌿 Bạn là Peer Mentor' : '🌿 Đăng ký Peer Mentor'}</span>
+                <span>{userState.isPeerMentor ? 'Bạn là Peer Mentor' : 'Đăng ký Peer Mentor'}</span>
               )}
             </div>
-            {!isCollapsed && !userState.isPeerMentor && (
-              <span className="text-[9px] bg-emerald-700 text-white px-1.5 py-0.5 rounded-full font-bold">
-                Mới
-              </span>
-            )}
+          </button>
+        )}
+
+        {/* Healing Notes & Feedback Button */}
+        {openHealingModal && (
+          <button
+            onClick={() => {
+              openHealingModal();
+              setIsMobileDrawerOpen(false);
+            }}
+            className={`flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-xl text-xs font-semibold transition-all text-[var(--text-muted)] hover:bg-[#EAF0E8]/70 dark:hover:bg-white/5 hover:text-[var(--text-primary)]`}
+            title="Gửi lời nhắn chữa lành & Feedback"
+          >
+            <div className="flex items-center gap-3.5">
+              <MessageCircleHeart className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              {!isCollapsed && <span>Gửi lời nhắn</span>}
+            </div>
           </button>
         )}
 
