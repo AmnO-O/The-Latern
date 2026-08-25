@@ -35,6 +35,7 @@ import { calculateReputationScore } from '../lib/reputationUtils';
 import { ReputationBadge } from './ReputationBadge';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getEffectiveAvatar } from '../data/avatarPresets';
+import { getFormattedAuthorName, getFormattedReplyAuthorName } from '../lib/authorUtils';
 
 interface PostDetailViewProps {
   post: Post;
@@ -322,7 +323,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               {post.isIdentityPublic && post.authorAvatarUrl ? (
                 <img
                   src={post.authorAvatarUrl}
-                  alt={post.authorDisplayName || post.authorAnonId}
+                  alt={getFormattedAuthorName(post)}
                   className="w-12 h-12 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888] shadow-xs shrink-0"
                 />
               ) : (
@@ -338,7 +339,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-base text-[#0F180E] dark:text-[#E8ECE6]">
-                    {post.isIdentityPublic ? (post.authorDisplayName || post.authorAnonId) : post.authorAnonId}
+                    {getFormattedAuthorName(post)}
                   </span>
 
                   {post.isIdentityPublic && (
@@ -597,7 +598,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-xs text-[#182217] dark:text-[#E8ECE6]">
-                            {reply.isIdentityPublic ? (reply.authorDisplayName || reply.authorName) : reply.authorName}
+                            {getFormattedReplyAuthorName(reply)}
                           </span>
 
                           {reply.isIdentityPublic && (
@@ -922,7 +923,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   <Mail className="w-6 h-6 text-[#2A4228]" />
                   <div>
                     <h4 className={`font-bold text-sm ${activeTheme.textPrimary}`}>
-                      {post.isIdentityPublic ? (post.authorDisplayName || post.authorAnonId) : post.authorAnonId} • {post.schoolName}
+                      {getFormattedAuthorName(post)} • {post.schoolName}
                     </h4>
                     <p 
                       className={`text-xs ${activeTheme.textMuted}`}
@@ -964,7 +965,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               {post.replies.map(reply => (
                 <div key={reply.id} className={`p-6 rounded-2xl border ${activeTheme.card} space-y-2`}>
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className={activeTheme.accent}>🌿 {reply.isIdentityPublic ? (reply.authorDisplayName || reply.authorName) : reply.authorName}</span>
+                    <span className={activeTheme.accent}>🌿 {getFormattedReplyAuthorName(reply)}</span>
                     <span 
                       className={activeTheme.textMuted}
                       title={formatFullDateTime(reply.createdAt || reply.id)}

@@ -9,6 +9,7 @@ import {
   Quote 
 } from 'lucide-react';
 import { Post } from '../types';
+import { getFormattedAuthorName } from '../lib/authorUtils';
 
 interface ShareModalProps {
   post: Post | null;
@@ -23,7 +24,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
   if (!isOpen || !post) return null;
 
   const shareUrl = `${window.location.origin}/?post=${post.id}`;
-  const shareText = `"Lá thư từ ${post.authorAnonId} (${post.schoolName})":\n\n${post.title}\n"${post.content.slice(0, 150)}..."\n\nLắng nghe và gửi lời xoa dịu tại The Lantern: ${shareUrl}`;
+  const shareText = `"Lá thư từ ${getFormattedAuthorName(post)} (${post.schoolName})":\n\n${post.title}\n"${post.content.slice(0, 150)}..."\n\nLắng nghe và gửi lời xoa dịu tại The Lantern: ${shareUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);

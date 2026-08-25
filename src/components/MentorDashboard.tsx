@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Post } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
+import { getFormattedAuthorName } from '../lib/authorUtils';
 
 interface MentorDashboardProps {
   posts: Post[];
@@ -148,7 +149,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EFEB] dark:border-[#2C382A] pb-3">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-[#3A4036] dark:text-[#E8ECE6]">
-                    {post.authorAnonId} ({post.schoolName})
+                    {getFormattedAuthorName(post)} ({post.schoolName})
                   </span>
                   {post.isPublic ? (
                     <span className="bg-[#5A6E58]/15 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/30 text-[9px] font-bold px-2 py-0.5 rounded-full">

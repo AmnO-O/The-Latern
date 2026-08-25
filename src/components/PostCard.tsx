@@ -20,6 +20,7 @@ import { Post } from '../types';
 import { calculateReputationScore } from '../lib/reputationUtils';
 import { ReputationBadge } from './ReputationBadge';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
+import { getFormattedAuthorName } from '../lib/authorUtils';
 
 interface PostCardProps {
   post: Post;
@@ -60,7 +61,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.isIdentityPublic && post.authorAvatarUrl ? (
             <img
               src={post.authorAvatarUrl}
-              alt={post.authorDisplayName || post.authorAnonId}
+              alt={getFormattedAuthorName(post)}
               className="w-10 h-10 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888]/60 shadow-2xs shrink-0"
             />
           ) : (
@@ -75,7 +76,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-xs sm:text-sm text-[#182217] dark:text-[#E8ECE6]">
-                {post.isIdentityPublic ? (post.authorDisplayName || post.authorAnonId) : post.authorAnonId}
+                {getFormattedAuthorName(post)}
               </span>
 
               {post.isIdentityPublic ? (

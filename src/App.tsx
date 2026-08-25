@@ -26,6 +26,7 @@ import { ShareModal } from './components/ShareModal';
 import { AmbientSoundModal } from './components/AmbientSoundModal';
 import { CampusGlobeView } from './components/CampusGlobeView';
 import { calculateReputationScore } from './lib/reputationUtils';
+import { getFormattedAuthorName } from './lib/authorUtils';
 import {
   fetchAllPostsFromFirestore,
   createPostInFirestore,
@@ -609,7 +610,7 @@ export default function App() {
         schoolId: postData.schoolId,
         schoolName: postData.schoolName,
         schoolSlug: postData.schoolSlug,
-        authorAnonId: postData.authorAnonId || `Người dùng ẩn danh #${Math.floor(100 + Math.random() * 899)}`,
+        authorAnonId: postData.authorAnonId || `#${Math.floor(100 + Math.random() * 899)}`,
         authorRole: 'student',
         authorClassBadge: postData.authorClassBadge,
         authorReputationScore: userState.reputationScore,
@@ -906,8 +907,8 @@ export default function App() {
     if (replyOptions?.isIdentityPublic && replyOptions.authorDisplayName) {
       authorName = replyOptions.authorDisplayName;
     } else if (isOP && targetPost) {
-      // Retain the exact anonymous post identity when OP comments
-      authorName = targetPost.authorAnonId;
+      // Retain the exact anonymous post identity when OP comments (#123 / #979)
+      authorName = getFormattedAuthorName(targetPost);
     } else {
       // Generate consistent per-thread commenter alias (e.g. #412) without leaking identity across posts
       const seedStr = `${currentUserId || 'guest'}_${postId}`;
@@ -916,7 +917,7 @@ export default function App() {
         hash = (hash * 31 + seedStr.charCodeAt(i)) & 0xffffff;
       }
       const commenterNum = (Math.abs(hash) % 899) + 100;
-      authorName = `Người gửi ẩn danh #${commenterNum}`;
+      authorName = `#${commenterNum}`;
     }
 
     const newReply: Reply = {
@@ -1136,14 +1137,15 @@ export default function App() {
       createdAt: Date.now()
     };
 
+    const authorDisplayName = getFormattedAuthorName(post);
     const newThreadMeta: FirestoreThreadDoc = {
       id: newThreadId,
       participants: [currentUserId, authorId],
       participantNames: {
         [currentUserId]: userDisplayName,
-        [authorId]: post.authorAnonId
+        [authorId]: authorDisplayName
       },
-      peerName: `Tác giả ẩn danh (${post.authorAnonId})`,
+      peerName: `Tác giả (${authorDisplayName})`,
       peerRole: 'student',
       roleTitle: `Tác giả lá thư • ${post.schoolName}`,
       isOnline: true,

@@ -514,8 +514,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
           </div>
 
-          {/* Identity Status Notice for Logged-In Users */}
-          {userState.isIdentityLocked ? (
+          {/* Identity Status Notice for Logged-In Users (only shown when locked) */}
+          {userState.isIdentityLocked && (
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
                 <Lock className="w-4 h-4" />
@@ -527,20 +527,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 leading-relaxed">
                   Họ tên thật của bạn là thống nhất trên toàn hệ thống. Chuyên ngành và niên khóa được lưu tương ứng theo từng trường học mà bạn xác thực. Bạn có thể tự do đổi Avatar hoặc chuyển sang chế độ <strong>Ẩn danh 100%</strong> bất cứ lúc nào.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-amber-600 text-white shrink-0 shadow-xs">
-                <FileEdit className="w-4 h-4" />
-              </div>
-              <div className="space-y-1 text-left">
-                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800 dark:text-amber-300">
-                  <span>Thiết lập danh tính học đường theo từng trường</span>
-                </div>
-                <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
-                  Điền Họ tên thật thống nhất bên dưới và thiết lập Chuyên ngành / Niên khóa tương ứng cho từng trường bạn theo học, hoặc <button onClick={onOpenVerify} className="font-bold underline text-amber-800 dark:text-amber-200">Quét Thẻ AI</button> để tự động nhận diện.
                 </p>
               </div>
             </div>
