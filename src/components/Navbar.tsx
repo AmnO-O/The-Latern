@@ -19,7 +19,9 @@ import {
   ChevronRight, 
   Menu, 
   X,
-  Radio
+  Radio,
+  HeartHandshake,
+  Sparkles
 } from 'lucide-react';
 import { ActiveTab, School, UserState } from '../types';
 import { loginWithGoogle, logout } from '../lib/firebase';
@@ -39,6 +41,7 @@ interface NavbarProps {
   openComposer: () => void;
   openEmergency: () => void;
   openAmbientModal?: () => void;
+  openPeerMentorModal?: () => void;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
 }
@@ -56,6 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openComposer,
   openEmergency,
   openAmbientModal,
+  openPeerMentorModal,
   isDesktopCollapsed = false,
   setIsDesktopCollapsed
 }) => {
@@ -299,6 +303,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             />
           )}
         </button>
+
+        {/* Peer Mentor CTA Button */}
+        {openPeerMentorModal && (
+          <button
+            onClick={openPeerMentorModal}
+            className={`flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-xl text-xs font-semibold transition-all ${
+              userState.isPeerMentor
+                ? 'bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 font-bold'
+                : 'bg-[#FAF9F6] dark:bg-[#20281F] text-[#2A4228] dark:text-[#8BA888] border border-[#DCE4D8] dark:border-[#3A4738] hover:bg-[#EAF0E8]'
+            }`}
+            title="Đăng ký làm Người Lắng Nghe Đồng Hành (Peer Mentor)"
+          >
+            <div className="flex items-center gap-3.5">
+              <HeartHandshake className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              {!isCollapsed && (
+                <span>{userState.isPeerMentor ? '🌿 Bạn là Peer Mentor' : '🌿 Đăng ký Peer Mentor'}</span>
+              )}
+            </div>
+            {!isCollapsed && !userState.isPeerMentor && (
+              <span className="text-[9px] bg-emerald-700 text-white px-1.5 py-0.5 rounded-full font-bold">
+                Mới
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Role-Gated Admin / Mentor Access */}
         {!isCollapsed && userState.googleUser?.email?.toLowerCase() === 'phnam2409@apcs.fitus.edu.vn' && (

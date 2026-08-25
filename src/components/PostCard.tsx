@@ -14,7 +14,8 @@ import {
   Hourglass,
   Pencil,
   Trash2,
-  Sparkles
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import { Post } from '../types';
 import { calculateReputationScore } from '../lib/reputationUtils';
@@ -110,7 +111,12 @@ export const PostCard: React.FC<PostCardProps> = ({
                   {post.authorClassBadge}
                 </span>
               )}
-              {post.isPublic ? (
+              {post.isCounselingMailbox ? (
+                <span className="bg-emerald-800 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                  <Lock className="w-2.5 h-2.5 text-emerald-300" />
+                  <span>🔒 Hòm Thư Tư Vấn</span>
+                </span>
+              ) : post.isPublic ? (
                 <span className="bg-[#385036]/15 text-[#385036] dark:text-[#8BA888] border border-[#8BA888]/30 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Globe className="w-2.5 h-2.5" />
                   <span>Sảnh Chung</span>

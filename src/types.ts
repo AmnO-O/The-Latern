@@ -13,7 +13,7 @@ export interface School {
   location: string;
 }
 
-export type AuthorRole = 'student' | 'alumni' | 'peer_listener' | 'expert' | 'ai_lantern';
+export type AuthorRole = 'student' | 'alumni' | 'peer_listener' | 'counselor' | 'expert' | 'ai_lantern';
 
 export interface Reply {
   id: string;
@@ -77,6 +77,8 @@ export interface Post {
   flagReason?: string;
   crisisDetected?: boolean;
   isPublic?: boolean; // true = Sảnh chung công khai toàn quốc; false = Chỉ trong Hộp thư Trường
+  isCounselingMailbox?: boolean; // true = Hòm thư tư vấn tâm lý trường (Bảo mật 100% ẩn danh, chỉ cố vấn/peer mentor trả lời)
+  counselorReplyOnly?: boolean;
   imageUrl?: string;
   imageAnalysis?: ImageAnalysisResult;
   isIdentityPublic?: boolean; // True if posted with real identity (shows real name, avatar, and cohort)
@@ -146,6 +148,16 @@ export interface SchoolVerificationRecord {
   isIdentityLocked?: boolean; // Khóa chống sửa đổi thông tin thật
 }
 
+export interface PeerMentorApplication {
+  schoolId: string;
+  schoolName: string;
+  status: 'pending' | 'approved';
+  appliedAt: number;
+  strengths: string[];
+  motivation: string;
+  commitmentAccepted: boolean;
+}
+
 export interface UserState {
   isLoggedIn: boolean;
   userRole: 'student' | 'peer_listener' | 'mentor' | 'admin_moderator';
@@ -171,6 +183,10 @@ export interface UserState {
   verifiedMajor?: string; // Chuyên ngành trích xuất từ thẻ AI (khóa cố định)
   verifiedCohort?: string; // Niên khóa trích xuất từ thẻ AI (khóa cố định)
   isIdentityLocked?: boolean; // Cờ khóa danh tính chống sửa đổi
+  // Peer Mentor / Campus Counselor status
+  peerMentorApplication?: PeerMentorApplication;
+  isPeerMentor?: boolean;
+  isCampusCounselor?: boolean;
   googleUser?: {
     uid: string;
     email?: string;

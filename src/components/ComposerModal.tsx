@@ -23,7 +23,9 @@ import {
   Hourglass,
   Infinity as InfinityIcon,
   Zap,
-  Send
+  Send,
+  HeartHandshake,
+  MessageSquareHeart
 } from 'lucide-react';
 
 interface ComposerModalProps {
@@ -46,6 +48,8 @@ interface ComposerModalProps {
     authorAnonId?: string;
     authorClassBadge?: string;
     isPublic?: boolean;
+    isCounselingMailbox?: boolean;
+    counselorReplyOnly?: boolean;
     imageUrl?: string;
     imageAnalysis?: any;
     expiryDurationDays?: number;
@@ -91,7 +95,9 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>(['Áp lực học tập']);
   const [classBadge, setClassBadge] = useState('Học sinh 12');
-  const [isPublic, setIsPublic] = useState(true); // Default to public
+  const [postScope, setPostScope] = useState<'public' | 'campus' | 'counseling_mailbox'>('public');
+  const isPublic = postScope === 'public';
+  const isCounselingMailbox = postScope === 'counseling_mailbox';
   
   // User login status check
   const isUserLoggedIn = Boolean(isLoggedIn || userState?.isLoggedIn || userState?.googleUser?.email);
@@ -298,18 +304,20 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
       schoolName: schoolObj.name,
       schoolSlug: schoolObj.slug,
       tags: selectedTags,
-      authorAnonId: isIdentityPublic ? (unifiedRealName || displayName.trim()) : getComputedAnonId(),
-      authorClassBadge: !isIdentityPublic && classBadge !== 'Ẩn hoàn toàn' ? classBadge : undefined,
+      authorAnonId: (!isCounselingMailbox && isIdentityPublic) ? (unifiedRealName || displayName.trim()) : getComputedAnonId(),
+      authorClassBadge: (!isCounselingMailbox && !isIdentityPublic && classBadge !== 'Ẩn hoàn toàn') ? classBadge : undefined,
       isPublic,
+      isCounselingMailbox,
+      counselorReplyOnly: isCounselingMailbox,
       imageUrl: imagePreview || undefined,
       imageAnalysis: imageAnalysisResult || undefined,
       expiryDurationDays: !isUserLoggedIn && expiryDays === 0 ? 14 : expiryDays,
       isAnonymousGuest: !isUserLoggedIn,
-      isIdentityPublic: isUserLoggedIn ? isIdentityPublic : false,
-      authorDisplayName: isIdentityPublic ? (unifiedRealName || displayName.trim()) : undefined,
-      authorAvatarUrl: isIdentityPublic ? avatarUrl : undefined,
-      authorCohort: (isIdentityPublic && !isGlobalLounge) ? (cohortInput.trim() || initialCohort) : undefined,
-      authorMajor: (isIdentityPublic && !isGlobalLounge) ? (schoolMajor || currentMajor || undefined) : undefined
+      isIdentityPublic: (isUserLoggedIn && !isCounselingMailbox) ? isIdentityPublic : false,
+      authorDisplayName: (!isCounselingMailbox && isIdentityPublic) ? (unifiedRealName || displayName.trim()) : undefined,
+      authorAvatarUrl: (!isCounselingMailbox && isIdentityPublic) ? avatarUrl : undefined,
+      authorCohort: (!isCounselingMailbox && isIdentityPublic && !isGlobalLounge) ? (cohortInput.trim() || initialCohort) : undefined,
+      authorMajor: (!isCounselingMailbox && isIdentityPublic && !isGlobalLounge) ? (schoolMajor || currentMajor || undefined) : undefined
     });
 
     setIsSubmitting(false);
@@ -696,41 +704,84 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
           {/* Visibility Scope Switcher */}
           <div>
             <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1.5">
-              Phạm vi hiển thị lá thư
+              Phạm vi gửi lá thư & Chế độ hỗ trợ
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setIsPublic(true)}
+                onClick={() => setPostScope('public')}
                 className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
-                  isPublic
+                  postScope === 'public'
                     ? 'bg-[#2A4228] text-white border-[#2A4228] shadow-xs'
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <Globe className="w-5 h-5" />
+                <Globe className="w-5 h-5 shrink-0" />
                 <div>
-                  <div className="font-bold">🌐 Sảnh Chung Mọi Trường</div>
-                  <div className="text-[9px] opacity-80 font-normal">Mọi người ở tất cả các trường có thể đọc & an ủi</div>
+                  <div className="font-bold">🌐 Sảnh Chung</div>
+                  <div className="text-[9px] opacity-80 font-normal leading-tight">Toàn quốc đọc & an ủi</div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => setIsPublic(false)}
+                onClick={() => {
+                  setPostScope('campus');
+                  if (selectedSchoolId === 'all-schools' || selectedSchoolId === 'all') {
+                    const firstSchool = schools.find(s => s.id !== 'all-schools' && s.id !== 'all') || schools[0];
+                    setSelectedSchoolId(firstSchool.id);
+                  }
+                }}
                 className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
-                  !isPublic
+                  postScope === 'campus'
                     ? 'bg-[#2A4228] text-white border-[#2A4228] shadow-xs'
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <GraduationCap className="w-5 h-5" />
+                <GraduationCap className="w-5 h-5 shrink-0" />
                 <div>
-                  <div className="font-bold">🏫 Chỉ Trong Trường</div>
-                  <div className="text-[9px] opacity-80 font-normal">Chỉ thành viên thuộc trường được chọn</div>
+                  <div className="font-bold">🏫 Nội Bộ Trường</div>
+                  <div className="text-[9px] opacity-80 font-normal leading-tight">Chỉ học sinh trường này</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPostScope('counseling_mailbox');
+                  setPostingMode('anonymous');
+                  if (selectedSchoolId === 'all-schools' || selectedSchoolId === 'all') {
+                    const firstSchool = schools.find(s => s.id !== 'all-schools' && s.id !== 'all') || schools[0];
+                    setSelectedSchoolId(firstSchool.id);
+                  }
+                }}
+                className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
+                  postScope === 'counseling_mailbox'
+                    ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                    : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
+                }`}
+              >
+                <HeartHandshake className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <div className="font-bold flex items-center gap-1">
+                    <span>🔒 Hòm Thư Tư Vấn</span>
+                  </div>
+                  <div className="text-[9px] opacity-80 font-normal leading-tight">Cố vấn / Peer Mentor</div>
                 </div>
               </button>
             </div>
+
+            {postScope === 'counseling_mailbox' && (
+              <div className="mt-2 p-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-1 animate-fade-in">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 text-[11px]">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Hòm Thư Tư Vấn Tâm Lý Trường (Bảo Mật 100% Ẩn Danh)</span>
+                </div>
+                <p className="text-[11px] text-[#2C382A] dark:text-[#A4B5A0] leading-relaxed">
+                  Giải tỏa những áp lực gia đình, bế tắc điểm số hoặc sợ bị dán nhãn tại trường. Bạn luôn xuất hiện dưới dạng <strong>Mã số ẩn danh #{anonNumber}</strong>. Chỉ Ban Cố Vấn và Peer Mentor của trường mới có quyền phản hồi để bảo đảm tính an toàn & thấu cảm.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Target School Selector */}

@@ -35,6 +35,7 @@ interface ProfileViewProps {
   setActiveTab?: (tab: any) => void;
   savedPosts: Post[];
   onOpenVerify: () => void;
+  onOpenPeerMentorModal?: () => void;
   onRemoveSchoolVerification?: (schoolId: string) => void;
   onResetAllVerifications?: () => void;
   onSelectPost: (post: Post) => void;
@@ -51,6 +52,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   setActiveTab,
   savedPosts,
   onOpenVerify,
+  onOpenPeerMentorModal,
   onRemoveSchoolVerification,
   onResetAllVerifications,
   onSelectPost,
@@ -485,6 +487,69 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Peer Mentor / Listener Card */}
+      <div className="bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] glass-panel rounded-3xl p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl shrink-0 shadow-xs">
+              🌿
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
+                  Người Lắng Nghe Đồng Hành (Peer Mentor)
+                </h3>
+                {userState.isPeerMentor && (
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                    Đã Kích Hoạt
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A]">
+                Đồng hành, lắng nghe và giải tỏa rào cản tâm lý học đường & khoảng cách thế hệ gia đình
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {userState.isPeerMentor ? (
+          <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span>Huy hiệu Người Lắng Nghe Đồng Hành Đang Hoạt Động</span>
+            </div>
+            <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed">
+              Bạn có quyền gửi lời an ủi và hồi âm cho các lá thư trong <strong>Hộp Thư Tư Vấn</strong> của trường. Cảm ơn sự tận tâm và thấu cảm của bạn đối với cộng đồng sinh viên!
+            </p>
+          </div>
+        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
+          <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
+              <span>⏳ Đơn ứng tuyển Peer Mentor đang được xem xét</span>
+            </div>
+            <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+              Ban điều phối và cố vấn trường đang xem xét kinh nghiệm và thông điệp của bạn. Bạn sẽ nhận được thông báo khi được phê duyệt.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] leading-relaxed">
+              Bạn là sinh viên nhiệt huyết, thấu hiểu và muốn giúp đỡ các bạn đồng trang lứa vượt qua áp lực gia đình hay rào cản tâm lý? Hãy gia nhập đội ngũ Peer Mentor!
+            </p>
+            {onOpenPeerMentorModal && (
+              <button
+                type="button"
+                onClick={onOpenPeerMentorModal}
+                className="px-4 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto justify-center"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Đăng ký Peer Mentor</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ================= PUBLIC IDENTITY SETTINGS PANEL (CHỈ HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP GMAIL) ================= */}

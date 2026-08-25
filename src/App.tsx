@@ -25,6 +25,7 @@ import { EditSchoolModal } from './components/EditSchoolModal';
 import { ShareModal } from './components/ShareModal';
 import { AmbientSoundModal } from './components/AmbientSoundModal';
 import { CampusGlobeView } from './components/CampusGlobeView';
+import { PeerMentorModal } from './components/PeerMentorModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
@@ -204,6 +205,7 @@ export default function App() {
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
   const [isAmbientModalOpen, setIsAmbientModalOpen] = useState(false);
+  const [isPeerMentorModalOpen, setIsPeerMentorModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
@@ -1344,6 +1346,7 @@ export default function App() {
         openComposer={() => setIsComposerOpen(true)}
         openEmergency={() => setIsEmergencyOpen(true)}
         openAmbientModal={() => setIsAmbientModalOpen(true)}
+        openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
         isDesktopCollapsed={isSidebarCollapsed}
         setIsDesktopCollapsed={setIsSidebarCollapsed}
       />
@@ -1418,6 +1421,7 @@ export default function App() {
             }}
             openComposer={() => setIsComposerOpen(true)}
             openVerify={() => setIsVerifyOpen(true)}
+            openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             openDirectChatWithPeer={handleOpenDirectChatWithPeer}
           />
         )}
@@ -1454,6 +1458,7 @@ export default function App() {
             onOpenAmbientModal={() => setIsAmbientModalOpen(true)}
             onOpenProfile={() => setActiveTab('profile')}
             onOpenLogin={handleGoogleSignIn}
+            onOpenPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             onConnectWithAuthor={handleConnectWithAuthor}
             isAuthor={isUserAuthor(selectedPost)}
           />
@@ -1483,6 +1488,7 @@ export default function App() {
             setActiveTab={setActiveTab}
             savedPosts={savedPosts}
             onOpenVerify={() => setIsVerifyOpen(true)}
+            onOpenPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             onOpenLogin={handleGoogleSignIn}
             onRemoveSchoolVerification={handleRemoveSchoolVerification}
             onResetAllVerifications={handleResetAllVerifications}
@@ -1636,6 +1642,28 @@ export default function App() {
 
             return updatedState;
           });
+        }}
+      />
+
+      <PeerMentorModal
+        isOpen={isPeerMentorModalOpen}
+        onClose={() => setIsPeerMentorModalOpen(false)}
+        userState={userState}
+        schools={schools}
+        onSubmitApplication={(application) => {
+          setUserState(prev => {
+            const updated: UserState = {
+              ...prev,
+              isPeerMentor: true,
+              peerMentorApplication: application,
+              userRole: prev.userRole === 'student' ? 'peer_listener' : prev.userRole
+            };
+            try {
+              localStorage.setItem('lantern_user_state', JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+          setIsPeerMentorModalOpen(false);
         }}
       />
 

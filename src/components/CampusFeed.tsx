@@ -13,7 +13,11 @@ import {
   Lock, 
   Users, 
   Search, 
-  MailCheck 
+  MailCheck,
+  HeartHandshake,
+  Sparkles,
+  UserCheck,
+  X
 } from 'lucide-react';
 import { Post, School, UserState } from '../types';
 import { PostCard } from './PostCard';
@@ -38,6 +42,7 @@ interface CampusFeedProps {
   onOpenGlobe?: (school?: School) => void;
   openComposer: () => void;
   openVerify: () => void;
+  openPeerMentorModal?: () => void;
   openDirectChatWithPeer: (peerName: string, roleTitle: string) => void;
 }
 
@@ -61,14 +66,43 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   onOpenGlobe,
   openComposer,
   openVerify,
+  openPeerMentorModal,
   openDirectChatWithPeer
 }) => {
+  const isGlobalView = !school || (school.id === 'global' || school.id === 'all-schools');
+
+  const verifiedList = userState?.verifiedSchools || (userState?.selectedSchool ? [userState.selectedSchool] : []);
+  const isVerifiedForThisSchool = !isGlobalView && (
+    verifiedList.some(s => s.id === school.id || s.slug === school.slug) || 
+    userState?.userRole === 'admin_moderator'
+  );
+
   const [selectedTag, setSelectedTag] = useState<string>('Tất cả');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('Tất cả khối');
-  const [scopeFilter, setScopeFilter] = useState<'all' | 'public' | 'campus'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'public' | 'campus' | 'counseling'>('all');
   const [feedSearch, setFeedSearch] = useState('');
+  const [accessGateModal, setAccessGateModal] = useState<{ isOpen: boolean; targetType: 'campus' | 'counseling' }>({
+    isOpen: false,
+    targetType: 'campus'
+  });
 
-  const isGlobalView = !school || (school.id === 'global' || school.id === 'all-schools');
+  const handleScopeChange = (target: 'all' | 'public' | 'campus' | 'counseling') => {
+    if (isGlobalView || target === 'public') {
+      setScopeFilter(target);
+      return;
+    }
+
+    if (!isVerifiedForThisSchool) {
+      if (target === 'campus' || target === 'counseling') {
+        setAccessGateModal({ isOpen: true, targetType: target });
+        return;
+      }
+      setScopeFilter(target);
+      return;
+    }
+
+    setScopeFilter(target);
+  };
 
   // Base posts selection based on selected school or global view
   const basePosts = isGlobalView
@@ -78,8 +112,15 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   // Filter by scope (inside specific school hub)
   const scopeFilteredPosts = basePosts.filter(p => {
     if (isGlobalView) return true; // Sảnh Chung is strictly public posts
-    if (scopeFilter === 'public') return p.isPublic === true;
-    if (scopeFilter === 'campus') return p.isPublic !== true;
+
+    // Unverified visitors to a specific school hub can only view public non-counseling letters
+    if (!isVerifiedForThisSchool) {
+      return p.isPublic === true && !p.isCounselingMailbox;
+    }
+
+    if (scopeFilter === 'counseling') return p.isCounselingMailbox === true;
+    if (scopeFilter === 'public') return p.isPublic === true && !p.isCounselingMailbox;
+    if (scopeFilter === 'campus') return p.isPublic !== true && !p.isCounselingMailbox;
     return true;
   });
 
@@ -254,41 +295,65 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
             <span>Đang hiển thị tất cả các lá thư công khai từ học sinh / sinh viên trên toàn quốc</span>
           </div>
         ) : (
-          <div className="bg-[#FAF9F6] dark:bg-[#20281F] p-1.5 rounded-2xl border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between gap-1 shadow-2xs">
+          <div className="bg-[#FAF9F6] dark:bg-[#20281F] p-1.5 rounded-2xl border border-[#C8D2C4] dark:border-[#3A4738] grid grid-cols-2 sm:grid-cols-4 gap-1 shadow-2xs">
             <button
-              onClick={() => setScopeFilter('all')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              onClick={() => handleScopeChange('all')}
+              className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
                 scopeFilter === 'all'
                   ? 'bg-[#2A4228] text-white shadow-xs'
-                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
+                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628]'
               }`}
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>Tất cả lá thư trường này</span>
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Tất cả</span>
             </button>
 
             <button
-              onClick={() => setScopeFilter('public')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              onClick={() => handleScopeChange('public')}
+              className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
                 scopeFilter === 'public'
                   ? 'bg-[#2A4228] text-white shadow-xs'
-                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
+                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628]'
               }`}
             >
-              <Globe className="w-4 h-4" />
-              <span>Lá thư công khai</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span>Công khai</span>
             </button>
 
             <button
-              onClick={() => setScopeFilter('campus')}
-              className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              onClick={() => handleScopeChange('campus')}
+              className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
                 scopeFilter === 'campus'
                   ? 'bg-[#2A4228] text-white shadow-xs'
-                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
+                  : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628]'
               }`}
+              title={!isVerifiedForThisSchool ? 'Dành riêng cho thành viên trường' : undefined}
             >
-              <Lock className="w-4 h-4" />
-              <span>Nội bộ trường</span>
+              <Lock className={`w-3.5 h-3.5 ${!isVerifiedForThisSchool ? 'text-amber-600 dark:text-amber-400' : ''}`} />
+              <span>Nội bộ</span>
+              {!isVerifiedForThisSchool && (
+                <span className="text-[9px] bg-amber-500/20 text-amber-800 dark:text-amber-300 px-1 rounded-full font-normal">
+                  Khóa
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => handleScopeChange('counseling')}
+              className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                scopeFilter === 'counseling'
+                  ? 'bg-emerald-800 text-white shadow-xs'
+                  : 'text-emerald-800 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+              }`}
+              title={!isVerifiedForThisSchool ? 'Dành riêng cho thành viên trường & Peer Mentor' : undefined}
+            >
+              <HeartHandshake className="w-3.5 h-3.5" />
+              <span>🔒 Hòm Thư Tư Vấn</span>
+              {!isVerifiedForThisSchool && (
+                <span className="text-[9px] bg-emerald-700/20 text-emerald-900 dark:text-emerald-200 px-1 rounded-full font-normal">
+                  Khóa
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -464,6 +529,67 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
           </div>
         </div>
       </aside>
+
+      {/* Member-Only Access Gate Modal Popup */}
+      {accessGateModal.isOpen && !isGlobalView && school && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-scale-in text-center relative">
+            <button
+              onClick={() => setAccessGateModal({ isOpen: false, targetType: 'campus' })}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-[#5A6D58] dark:text-[#8E9B8A] transition-colors"
+              title="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-16 h-16 rounded-3xl bg-emerald-500/15 dark:bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-inner">
+              {accessGateModal.targetType === 'counseling' ? '🔒' : '🏛️'}
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 px-3 py-0.5 rounded-full inline-block">
+                Yêu cầu thành viên trường
+              </span>
+              <h3 className="font-serif italic text-xl font-bold text-[#182217] dark:text-[#E8ECE6]">
+                {accessGateModal.targetType === 'counseling' 
+                  ? 'Hòm Thư Tư Vấn Giới Hạn Truy Cập' 
+                  : 'Hộp Thư Nội Bộ Trường Học'}
+              </h3>
+              <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] leading-relaxed px-1">
+                Bạn cần là học sinh / sinh viên chính thức của <strong>{school.name}</strong> để xem nội dung {accessGateModal.targetType === 'counseling' ? 'trong Hòm Thư Tư Vấn Tâm Lý' : 'nội bộ'}. Bạn hiện có thể đọc các lá thư ở chế độ <strong>Công khai</strong>.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#20281F] border border-[#DCE4D8] dark:border-[#3A4738] text-[11px] text-[#42493F] dark:text-[#9DA99B] text-left flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <span>Không gian này được bảo vệ nhằm giữ gìn sự riêng tư, bảo mật tâm lý và kết nối an toàn cho học sinh / sinh viên của trường.</span>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                onClick={() => {
+                  setAccessGateModal({ isOpen: false, targetType: 'campus' });
+                  if (openVerify) openVerify();
+                }}
+                className="w-full py-3 rounded-2xl bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                <span>Xác thực thành viên trường ngay (Thẻ AI / Email)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setAccessGateModal({ isOpen: false, targetType: 'campus' });
+                  setScopeFilter('public');
+                }}
+                className="w-full py-2.5 rounded-2xl bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-[#5A6D58] dark:text-[#8E9B8A] font-semibold text-xs transition-colors"
+              >
+                Xem các bài viết công khai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
