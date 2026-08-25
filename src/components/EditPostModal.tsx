@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Edit3, X, Globe, School as SchoolIcon, Save } from 'lucide-react';
 import { Post } from '../types';
 
 interface EditPostModalProps {
@@ -81,7 +82,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#E5E2D9] dark:border-[#3A4738] mb-4">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#8BA888] text-2xl">edit_note</span>
+            <Edit3 className="w-5 h-5 text-[#8BA888]" />
             <h2 className="font-serif italic font-semibold text-xl text-[#3A4036] dark:text-[#E8ECE6]">
               Chỉnh sửa lá thư
             </h2>
@@ -90,7 +91,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-[#F1F3EF] dark:bg-[#20281F] text-[#7E7A71] dark:text-[#8E9B8A] hover:text-[#3A4036] flex items-center justify-center transition-colors"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -110,7 +111,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">public</span>
+                <Globe className="w-5 h-5 shrink-0" />
                 <div>
                   <div className="font-bold">🌐 Sảnh Chung Mọi Trường</div>
                   <div className="text-[9px] opacity-80 font-normal">Mọi người ở tất cả các trường có thể đọc</div>
@@ -126,7 +127,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">school</span>
+                <SchoolIcon className="w-5 h-5 shrink-0" />
                 <div>
                   <div className="font-bold">🏫 Chỉ Trong Trường</div>
                   <div className="text-[9px] opacity-80 font-normal">Chỉ thành viên thuộc trường chọn đọc</div>
@@ -210,7 +211,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-base">save</span>
+                  <Save className="w-4 h-4" />
                   <span>Lưu thay đổi</span>
                 </>
               )}

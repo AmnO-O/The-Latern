@@ -8,7 +8,13 @@ import {
   Sprout, 
   Share2, 
   Bookmark, 
-  MessageCircle 
+  MessageCircle,
+  User,
+  BadgeCheck,
+  Hourglass,
+  Pencil,
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 import { Post } from '../types';
 import { calculateReputationScore } from '../lib/reputationUtils';
@@ -60,7 +66,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           ) : (
             <div className="w-9 h-9 rounded-full bg-[#E9EDC9] dark:bg-[#2C382A] border border-[#CCD5AE] dark:border-[#3A4738] flex items-center justify-center text-[#5A6E58] dark:text-[#8BA888] font-bold text-xs shrink-0 shadow-2xs">
               {post.isIdentityPublic ? (
-                <span className="material-symbols-outlined text-base">person</span>
+                <User className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
               ) : (
                 <Sprout className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
               )}
@@ -74,7 +80,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
               {post.isIdentityPublic ? (
                 <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[11px]">badge</span>
+                  <BadgeCheck className="w-3 h-3" />
                   <span>Danh tính chính</span>
                 </span>
               ) : null}
@@ -119,8 +125,8 @@ export const PostCard: React.FC<PostCardProps> = ({
                   className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                   title="Lá thư tâm sự ẩn danh có thời hạn tự hủy để bảo vệ quyền riêng tư"
                 >
-                  <span className="flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[10px]">hourglass_empty</span>
+                  <span className="flex items-center gap-1">
+                    <Hourglass className="w-2.5 h-2.5" />
                     {(() => {
                       const diffMs = post.expiresAt - Date.now();
                       if (diffMs <= 0) return 'Sắp tự hủy';
@@ -166,7 +172,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                   className="px-2 py-0.5 rounded-lg bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-[#8BA888]/20 text-[#5A6E58] dark:text-[#8BA888] border border-[#E5E2D9] dark:border-[#3A4738] text-[10px] font-bold flex items-center gap-1 transition-all"
                   title="Chỉnh sửa lá thư"
                 >
-                  <span className="material-symbols-outlined text-xs">edit</span>
+                  <Pencil className="w-3 h-3" />
                   <span>Sửa</span>
                 </button>
               )}
@@ -179,7 +185,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                   className="px-2 py-0.5 rounded-lg bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-rose-500/20 text-rose-500 border border-rose-200 dark:border-rose-900/50 text-[10px] font-bold flex items-center gap-1 transition-all"
                   title="Xóa lá thư này"
                 >
-                  <span className="material-symbols-outlined text-xs">delete</span>
+                  <Trash2 className="w-3 h-3" />
                   <span>Xóa</span>
                 </button>
               )}
@@ -203,7 +209,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           <img src={post.imageUrl} alt="Attachment" className="w-16 h-16 object-cover rounded-lg shrink-0 border border-[#E5E2D9]" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#2A4228] dark:text-[#8BA888]">
-              <span className="material-symbols-outlined text-sm">auto_awesome</span>
+              <Sparkles className="w-3.5 h-3.5" />
               <span>Gemini AI Phân Tích Hình Ảnh</span>
             </div>
             {post.imageAnalysis?.summary && (

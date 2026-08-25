@@ -1,4 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  ShieldCheck, 
+  X, 
+  Cloud, 
+  CheckCircle2, 
+  School as SchoolIcon, 
+  ScanLine, 
+  Mail, 
+  Key, 
+  Sparkles, 
+  CreditCard, 
+  AlertTriangle, 
+  RotateCcw, 
+  ArrowRightLeft, 
+  RefreshCw, 
+  AtSign, 
+  AlertCircle, 
+  MailCheck, 
+  Send, 
+  Info, 
+  CheckCircle 
+} from 'lucide-react';
 import { School, UserState, SchoolVerificationRecord } from '../types';
 
 interface SchoolVerifyModalProps {
@@ -24,15 +46,19 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
   userState,
   onCompleteVerification
 }) => {
+  const actualSchools = schools.filter(s => s.id !== 'all-schools' && s.id !== 'all' && !s.name?.includes('Sảnh Chung'));
   const [activeMethod, setActiveMethod] = useState<'ocr' | 'email' | 'token'>('ocr');
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(
-    userState?.selectedSchool?.id || schools[0]?.id || 'new_custom'
-  );
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(() => {
+    if (userState?.selectedSchool?.id && userState.selectedSchool.id !== 'all-schools' && userState.selectedSchool.id !== 'all' && !userState.selectedSchool.name?.includes('Sảnh Chung')) {
+      return userState.selectedSchool.id;
+    }
+    return actualSchools[0]?.id || 'new_custom';
+  });
   const [customSchoolName, setCustomSchoolName] = useState<string>('');
   const [studentRole, setStudentRole] = useState<'student' | 'alumni'>('student');
 
   const getEffectiveSchool = (): School => {
-    if (selectedSchoolId === 'new_custom' || !selectedSchoolId || schools.length === 0) {
+    if (selectedSchoolId === 'new_custom' || !selectedSchoolId || actualSchools.length === 0) {
       const name = customSchoolName.trim() || 'Trường học của tôi';
       return {
         id: `school-custom-${Date.now()}`,
@@ -45,7 +71,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
         location: 'Việt Nam'
       };
     }
-    const found = schools.find(s => s.id === selectedSchoolId);
+    const found = actualSchools.find(s => s.id === selectedSchoolId);
     if (found) return found;
     const name = customSchoolName.trim() || 'Trường học của tôi';
     return {
@@ -436,7 +462,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
         <div className="flex items-center justify-between pb-4 border-b border-[#E2E8E0] dark:border-[#2B372A] mb-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#2A4228] text-white flex items-center justify-center shadow-xs shrink-0">
-              <span className="material-symbols-outlined text-2xl">verified_user</span>
+              <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <h2 className="font-serif italic font-bold text-lg text-[#182217] dark:text-[#E8ECE6]">
@@ -452,7 +478,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)] transition-colors shrink-0"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -461,7 +487,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
           <div className="mb-4 p-3 rounded-2xl bg-[#EAF0E8]/70 dark:bg-[#20281F] border border-[#C8D2C4]/70 dark:border-[#3A4738]">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] uppercase font-bold tracking-wider text-[#2A4228] dark:text-[#8BA888] flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">cloud_done</span>
+                <Cloud className="w-3.5 h-3.5" />
                 <span>Trường đã đồng bộ ({verifiedList.length})</span>
               </span>
               <span className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A]">Đang lưu trữ trên Firestore</span>
@@ -472,7 +498,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                   key={sch.id}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white dark:bg-[#1C231B] border border-[#8BA888]/40 text-xs font-bold text-[#182217] dark:text-[#E8ECE6] shadow-2xs"
                 >
-                  <span className="material-symbols-outlined text-xs text-emerald-600">check_circle</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{sch.name}</span>
                 </span>
               ))}
@@ -483,7 +509,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
         {success ? (
           <div className="py-6 text-center space-y-4 animate-fade-in">
             <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center shadow-md">
-              <span className="material-symbols-outlined text-3xl">sync_saved_locally</span>
+              <CheckCircle className="w-8 h-8" />
             </div>
             
             <div>
@@ -498,7 +524,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
             {syncFeedback && (
               <div className="bg-[#2A4228]/10 dark:bg-[#8BA888]/15 border border-[#8BA888]/30 rounded-2xl p-4 text-xs text-[#182217] dark:text-[#E8ECE6] space-y-2.5 text-left max-w-sm mx-auto shadow-sm">
                 <div className="font-bold flex items-center gap-1.5 text-[#2A4228] dark:text-[#8BA888] text-sm">
-                  <span className="material-symbols-outlined text-base">school</span>
+                  <SchoolIcon className="w-4 h-4" />
                   <span>{syncFeedback.schoolName}</span>
                 </div>
 
@@ -572,7 +598,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:text-[#182217]'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">document_scanner</span>
+                <ScanLine className="w-4 h-4" />
                 <span>Quét Thẻ AI</span>
               </button>
 
@@ -585,7 +611,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:text-[#182217]'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">mail</span>
+                <Mail className="w-4 h-4" />
                 <span>Email Trường</span>
               </button>
 
@@ -598,7 +624,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:text-[#182217]'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">key</span>
+                <Key className="w-4 h-4" />
                 <span>Mã Token</span>
               </button>
             </div>
@@ -616,7 +642,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                       onChange={(e) => setSelectedSchoolId(e.target.value)}
                       className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none focus:border-[#2A4228]"
                     >
-                      {schools.length > 0 && schools.map(s => (
+                      {actualSchools.length > 0 && actualSchools.map(s => (
                         <option key={s.id} value={s.id} className="bg-white dark:bg-[#1C231B]">
                           {s.name} ({s.location})
                         </option>
@@ -664,7 +690,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
               <form onSubmit={handleOcrSubmit} className="space-y-4">
                 <div className="p-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-900 dark:text-emerald-300 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">auto_awesome</span>
+                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>Tự động phát hiện & chuyển đúng trường</span>
                   </div>
                   <p className="text-[11px] leading-relaxed opacity-90">
@@ -685,12 +711,12 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     />
 
                     <div className="w-11 h-11 rounded-2xl bg-[#2A4228]/15 border border-[#2A4228]/30 text-[#2A4228] dark:text-[#8BA888] flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                      <span className="material-symbols-outlined text-2xl">id_card</span>
+                      <CreditCard className="w-6 h-6" />
                     </div>
 
                     {fileUploaded ? (
                       <div className="text-xs text-[#2A4228] dark:text-[#8BA888] font-bold flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <CheckCircle2 className="w-4 h-4" />
                         <span>Đã tải lên: {fileName}</span>
                       </div>
                     ) : (
@@ -710,7 +736,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                 {ocrError && (
                   <div className="p-4 rounded-2xl bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 text-xs space-y-2.5 animate-scale-up">
                     <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold">
-                      <span className="material-symbols-outlined text-base">warning</span>
+                      <AlertTriangle className="w-4 h-4" />
                       <span>{ocrError.title}</span>
                     </div>
 
@@ -742,7 +768,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                         }}
                         className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#20281F] border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px] font-bold hover:bg-rose-500/10 transition-colors flex items-center gap-1"
                       >
-                        <span className="material-symbols-outlined text-xs">restart_alt</span>
+                        <RotateCcw className="w-3.5 h-3.5" />
                         <span>Chọn/Chụp lại thẻ khác</span>
                       </button>
 
@@ -765,7 +791,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                           }}
                           className="px-3 py-1.5 rounded-xl bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-[11px] font-bold transition-all shadow-xs flex items-center gap-1"
                         >
-                          <span className="material-symbols-outlined text-xs">swap_horiz</span>
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
                           <span>Đổi sang "{ocrError.extractedSchool}"</span>
                         </button>
                       )}
@@ -774,7 +800,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                 )}
 
                 <div className="p-3 rounded-xl bg-[#EAF0E8]/60 dark:bg-[#20281F] border border-[#C8D2C4]/70 dark:border-[#3A4738] text-[11px] text-[#4A5C48] dark:text-[#8E9B8A] flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888] text-base shrink-0 mt-0.5">verified_user</span>
+                  <ShieldCheck className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888] shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     <strong className="text-[#182217] dark:text-[#E8ECE6]">Bảo mật tuyệt đối:</strong> Ảnh chỉ được đối soát tự động bởi AI và không lưu trữ công khai. Danh tính cá nhân vẫn được bảo đảm ẩn danh 100%.
                   </p>
@@ -792,7 +818,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-base">cloud_sync</span>
+                      <RefreshCw className="w-4 h-4" />
                       <span>Đồng bộ xác thực AI ngay</span>
                     </>
                   )}
@@ -822,13 +848,11 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                           placeholder="ví dụ: student@hcmus.edu.vn hoặc @apcs.fitus.edu.vn"
                           className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2.5 pl-9 pr-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-medium focus:outline-none focus:border-[#2A4228]"
                         />
-                        <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A6D58] dark:text-[#8E9B8A] text-base">
-                          alternate_email
-                        </span>
+                        <AtSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A6D58] dark:text-[#8E9B8A] w-4 h-4" />
                       </div>
                       {emailError && (
                         <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5 font-semibold flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">error</span>
+                          <AlertCircle className="w-3.5 h-3.5" />
                           {emailError}
                         </p>
                       )}
@@ -853,7 +877,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     </div>
 
                     <div className="p-3 rounded-xl bg-[#EAF0E8]/60 dark:bg-[#20281F] border border-[#C8D2C4]/70 dark:border-[#3A4738] text-[11px] text-[#4A5C48] dark:text-[#8E9B8A] flex items-start gap-2">
-                      <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888] text-base shrink-0 mt-0.5">mail_lock</span>
+                      <MailCheck className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888] shrink-0 mt-0.5" />
                       <p className="leading-relaxed">
                         Hệ thống sẽ gửi một <strong>mã xác thực OTP gồm 6 chữ số</strong> về email trường của bạn. Mã có hiệu lực trong 10 phút.
                       </p>
@@ -871,7 +895,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-base">send</span>
+                          <Send className="w-4 h-4" />
                           <span>Gửi mã xác thực OTP về Email</span>
                         </>
                       )}
@@ -884,7 +908,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     <div className="p-3 rounded-2xl bg-[#EAF0E8]/80 dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-[#2A4228]/15 text-[#2A4228] dark:text-[#8BA888] flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-sm">mark_email_read</span>
+                          <MailCheck className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -935,7 +959,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
 
                       {otpError && (
                         <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5 font-semibold text-center flex items-center justify-center gap-1">
-                          <span className="material-symbols-outlined text-xs">error</span>
+                          <AlertCircle className="w-3.5 h-3.5" />
                           {otpError}
                         </p>
                       )}
@@ -944,7 +968,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     {/* Resend Notice or Dev OTP Helper & Quick Auto-Fill */}
                     {serverDeliveryMessage && !emailSentViaResend && (
                       <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-800 dark:text-blue-200 flex items-start gap-2">
-                        <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-sm shrink-0 mt-0.5">info</span>
+                        <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                         <p className="leading-relaxed text-[11px]">{serverDeliveryMessage}</p>
                       </div>
                     )}
@@ -952,7 +976,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     {devOtpPreview && (
                       <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200 flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-amber-600 text-sm">vpn_key</span>
+                          <Key className="w-4 h-4 text-amber-600" />
                           <span>Mã OTP ({emailSentViaResend ? 'Dự phòng' : 'Mô phỏng/Test'}): <strong className="font-mono tracking-widest font-bold">{devOtpPreview}</strong></span>
                         </div>
                         <button
@@ -995,7 +1019,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-base">verified</span>
+                          <CheckCircle className="w-4 h-4" />
                           <span>Xác nhận mã OTP & Hoàn tất</span>
                         </>
                       )}
@@ -1020,14 +1044,12 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                       placeholder="Nhập mã MSSV hoặc token do Đoàn/Hội trường cấp..."
                       className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2.5 pl-9 pr-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-medium focus:outline-none focus:border-[#2A4228]"
                     />
-                    <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A6D58] dark:text-[#8E9B8A] text-base">
-                      key
-                    </span>
+                    <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A6D58] dark:text-[#8E9B8A] w-4 h-4" />
                   </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-[#EAF0E8]/60 dark:bg-[#20281F] border border-[#C8D2C4]/70 dark:border-[#3A4738] text-[11px] text-[#4A5C48] dark:text-[#8E9B8A] flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888] text-base shrink-0 mt-0.5">info</span>
+                  <Info className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888] shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     Dành cho các chiến dịch đồng hành tâm lý học đường phối hợp cùng Đoàn trường & Ban Cố vấn.
                   </p>
@@ -1045,7 +1067,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-base">cloud_sync</span>
+                      <RefreshCw className="w-4 h-4" />
                       <span>Kích hoạt quyền trường</span>
                     </>
                   )}

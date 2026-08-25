@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Headphones, X, Phone } from 'lucide-react';
 import { EMERGENCY_HOTLINES } from '../data/mockData';
 
 interface EmergencyDrawerProps {
@@ -46,7 +47,7 @@ export const EmergencyDrawer: React.FC<EmergencyDrawerProps> = ({ isOpen, onClos
         <div className="flex items-center justify-between pb-4 border-b border-[#E5E2D9] dark:border-[#3A4738] mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/30">
-              <span className="material-symbols-outlined text-2xl">support_agent</span>
+              <Headphones className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-serif italic font-bold text-lg text-rose-700 dark:text-rose-400">
@@ -60,7 +61,7 @@ export const EmergencyDrawer: React.FC<EmergencyDrawerProps> = ({ isOpen, onClos
             onClick={onClose}
             className="p-1.5 rounded-full text-[#A4A095] hover:text-[#3A4036] dark:hover:text-[#E8ECE6]"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -118,9 +119,9 @@ export const EmergencyDrawer: React.FC<EmergencyDrawerProps> = ({ isOpen, onClos
 
                   <a
                     href={`tel:${h.number.replace(/\s+/g, '')}`}
-                    className="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2 rounded-full text-xs shrink-0 flex items-center gap-1 shadow-md transition-all active:scale-95"
+                    className="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2 rounded-full text-xs shrink-0 flex items-center gap-1.5 shadow-md transition-all active:scale-95"
                   >
-                    <span className="material-symbols-outlined text-sm">call</span>
+                    <Phone className="w-3.5 h-3.5" />
                     <span>{h.number}</span>
                   </a>
                 </div>

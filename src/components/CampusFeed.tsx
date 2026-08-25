@@ -1,4 +1,20 @@
 import React, { useState } from 'react';
+import { 
+  Edit, 
+  Globe, 
+  BookOpen, 
+  GraduationCap, 
+  Camera, 
+  CheckCircle2, 
+  Info, 
+  ShieldCheck, 
+  Clock, 
+  MessageSquare, 
+  Lock, 
+  Users, 
+  Search, 
+  MailCheck 
+} from 'lucide-react';
 import { Post, School, UserState } from '../types';
 import { PostCard } from './PostCard';
 
@@ -105,7 +121,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 text-[11px] font-bold transition-all shadow-xs active:scale-95"
                 title="Chỉnh sửa logo và thông tin trường (Quyền Admin)"
               >
-                <span className="material-symbols-outlined text-sm">edit</span>
+                <Edit className="w-3.5 h-3.5" />
                 <span>Đổi Avatar / Thông tin trường</span>
               </button>
             </div>
@@ -124,9 +140,13 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   }}
                 />
               ) : (
-                <span className="material-symbols-outlined text-3xl">
-                  {isGlobalView ? 'public' : (school.type === 'highschool' ? 'local_library' : 'school')}
-                </span>
+                isGlobalView ? (
+                  <Globe className="w-8 h-8 text-[#5A6E58] dark:text-[#8BA888]" />
+                ) : school.type === 'highschool' ? (
+                  <BookOpen className="w-8 h-8 text-[#5A6E58] dark:text-[#8BA888]" />
+                ) : (
+                  <GraduationCap className="w-8 h-8 text-[#5A6E58] dark:text-[#8BA888]" />
+                )
               )}
             </div>
 
@@ -136,7 +156,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-bold backdrop-blur-xs"
                 title="Bấm để đổi avatar trường"
               >
-                <span className="material-symbols-outlined text-base">photo_camera</span>
+                <Camera className="w-4 h-4" />
                 <span>Đổi Logo</span>
               </button>
             )}
@@ -171,7 +191,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 return (
                   <div className="w-full max-w-md p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 dark:bg-emerald-950/20 text-center">
                     <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                      <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-emerald-400">verified</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Đã đồng bộ xác thực thành viên chính thức: {school.name}</span>
                     </div>
                     <p className="text-[11px] text-[#2C382A] dark:text-[#8E9B8A] mt-1">
@@ -183,7 +203,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 return (
                   <div className="w-full max-w-md p-3 rounded-2xl bg-[#2A4228]/10 dark:bg-[#8BA888]/15 border border-[#2A4228]/30 dark:border-[#8BA888]/30 text-center space-y-2">
                     <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#1B2C1A] dark:text-[#8BA888]">
-                      <span className="material-symbols-outlined text-sm text-[#2A4228] dark:text-[#8BA888]">info</span>
+                      <Info className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
                       <span>Bạn đang xem Hộp thư {school.name} với tư cách Khách</span>
                     </div>
                     <p className="text-[11px] text-[#2C382A] dark:text-[#8E9B8A]">
@@ -194,7 +214,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                         onClick={openVerify}
                         className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#2A4228] text-white hover:bg-[#1B2C1A] transition-all flex items-center gap-1"
                       >
-                        <span className="material-symbols-outlined text-xs">add_moderator</span>
+                        <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Đồng bộ xác thực thêm trường này</span>
                       </button>
                     </div>
@@ -204,7 +224,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 return (
                   <div className="w-full max-w-md p-3 rounded-2xl bg-[#B87B40]/10 border border-[#B87B40]/30 text-center">
                     <p className="text-xs font-bold text-[#AA6828] dark:text-[#D4A373] flex items-center justify-center gap-1">
-                      <span className="material-symbols-outlined text-sm">schedule</span>
+                      <Clock className="w-4 h-4" />
                       <span>Đang chờ duyệt thẻ HS/SV...</span>
                     </p>
                     <p className="text-[11px] text-[#2C382A] dark:text-[#8E9B8A] mt-0.5">
@@ -218,7 +238,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                     onClick={openVerify}
                     className="text-xs px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
                   >
-                    <span className="material-symbols-outlined text-sm">verified</span>
+                    <ShieldCheck className="w-4 h-4" />
                     <span>Đồng bộ xác thực Trường học (Thẻ AI / Email edu.vn)</span>
                   </button>
                 );
@@ -230,7 +250,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
         {/* Scope Filter Selector */}
         {isGlobalView ? (
           <div className="bg-[#2A4228]/10 dark:bg-[#8BA888]/15 border border-[#2A4228]/30 dark:border-[#8BA888]/30 px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs text-[#1B2C1A] dark:text-[#8BA888] font-bold">
-            <span className="material-symbols-outlined text-base text-[#2A4228] dark:text-[#8BA888]">public</span>
+            <Globe className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
             <span>Đang hiển thị tất cả các lá thư công khai từ học sinh / sinh viên trên toàn quốc</span>
           </div>
         ) : (
@@ -243,7 +263,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
               }`}
             >
-              <span className="material-symbols-outlined text-base">forum</span>
+              <MessageSquare className="w-4 h-4" />
               <span>Tất cả lá thư trường này</span>
             </button>
 
@@ -255,7 +275,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
               }`}
             >
-              <span className="material-symbols-outlined text-base">public</span>
+              <Globe className="w-4 h-4" />
               <span>Lá thư công khai</span>
             </button>
 
@@ -267,7 +287,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   : 'text-[#2C382A] dark:text-[#8E9B8A] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] hover:text-[#0F180E] dark:hover:text-[#E8ECE6]'
               }`}
             >
-              <span className="material-symbols-outlined text-base">lock</span>
+              <Lock className="w-4 h-4" />
               <span>Nội bộ trường</span>
             </button>
           </div>
@@ -278,7 +298,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
           {/* Grade / Cohort filter bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
             <span className="text-[10px] uppercase tracking-wider font-bold text-[#A4A095] shrink-0 mr-1 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">groups</span>
+              <Users className="w-3.5 h-3.5" />
               Lọc khối:
             </span>
             {gradeFilters.map(grade => (
@@ -316,9 +336,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
 
             {/* Search inside feed */}
             <div className="relative w-full sm:w-48 shrink-0">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#A4A095]">
-                search
-              </span>
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A4A095]" />
               <input
                 type="text"
                 value={feedSearch}
@@ -350,11 +368,11 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
         <div className="flex flex-col gap-4">
           {filteredPosts.length === 0 ? (
             <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A]">
-              <span className="material-symbols-outlined text-4xl mb-2 text-[#8BA888]/60">mark_email_read</span>
+              <MailCheck className="w-10 h-10 mx-auto mb-2 text-[#8BA888]/60" />
               <p className="text-sm font-medium">Chưa có lá thư nào thuộc danh mục này.</p>
               <button
                 onClick={openComposer}
-                className="mt-3 text-xs text-[#5A6E58] dark:text-[#8BA888] font-bold hover:underline"
+                className="mt-3 text-xs text-[#5A6E58] dark:text-[#8E9B8A] font-bold hover:underline"
               >
                 Hãy là người đầu tiên gửi thư ẩn danh ✍️
               </button>

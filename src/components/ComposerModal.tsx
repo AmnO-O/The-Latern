@@ -1,7 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { School, UserState } from '../types';
 import { AVATAR_PRESETS, getEffectiveAvatar } from '../data/avatarPresets';
-import { ShieldCheck, UserCheck, Sparkles, Image as ImageIcon, School as SchoolIcon } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  UserCheck, 
+  Sparkles, 
+  Image as ImageIcon, 
+  School as SchoolIcon,
+  FileEdit,
+  X,
+  ShieldAlert,
+  Users,
+  Lock,
+  Shuffle,
+  Globe,
+  Clock,
+  UserCog,
+  ScanLine,
+  CheckCircle2,
+  GraduationCap,
+  ImagePlus,
+  Hourglass,
+  Infinity as InfinityIcon,
+  Zap,
+  Send
+} from 'lucide-react';
 
 interface ComposerModalProps {
   isOpen: boolean;
@@ -70,13 +93,41 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
   const [classBadge, setClassBadge] = useState('Học sinh 12');
   const [isPublic, setIsPublic] = useState(true); // Default to public
   
+  // User login status check
+  const isUserLoggedIn = Boolean(isLoggedIn || userState?.isLoggedIn || userState?.googleUser?.email);
+
   // Identity Posting Mode: 'anonymous' vs 'identity'
-  const [postingMode, setPostingMode] = useState<'anonymous' | 'identity'>(
-    userState?.activePostingMode || 'anonymous'
-  );
+  const [postingMode, setPostingMode] = useState<'anonymous' | 'identity'>(() => {
+    if (!isUserLoggedIn) return 'anonymous';
+    return userState?.activePostingMode || 'anonymous';
+  });
+
+  // Expiry duration state (in days, 0 = permanent) - non-logged in users default to 14 days, logged in can default to 0
+  const [expiryDays, setExpiryDays] = useState<number>(() => {
+    if (!isUserLoggedIn) return 14;
+    return 0;
+  });
+
+  // Reset or enforce anonymous posting mode & valid expiry when modal opens or user login state changes
+  useEffect(() => {
+    if (isOpen) {
+      if (!isUserLoggedIn) {
+        setPostingMode('anonymous');
+        setExpiryDays(prev => (prev === 0 ? 14 : prev));
+      } else {
+        setPostingMode(userState?.activePostingMode || 'anonymous');
+      }
+    }
+  }, [isOpen, isUserLoggedIn, userState?.activePostingMode]);
 
   // Per-School Verification & Identity Info
   const currentSchoolObj = schools.find(s => s.id === selectedSchoolId) || defaultSchool;
+  const isCurrentSchoolGlobalLounge = Boolean(
+    selectedSchoolId === 'all-schools' ||
+    selectedSchoolId === 'all' ||
+    currentSchoolObj?.slug === 'sanh-chung-public' ||
+    currentSchoolObj?.name?.includes('Sảnh Chung')
+  );
   const currentVerification = userState?.schoolVerifications?.[selectedSchoolId];
   const isSchoolVerified = !!currentVerification;
   const isLocked = !!(userState?.isIdentityLocked || currentVerification?.isIdentityLocked || (userState?.verificationStatus === 'verified' && userState?.verifiedFullName));
@@ -115,9 +166,6 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
       setDisplayName(unifiedRealName);
     }
   }, [unifiedRealName]);
-
-  // Expiry duration state (in days, 0 = permanent)
-  const [expiryDays, setExpiryDays] = useState<number>(isLoggedIn ? 0 : 14);
 
   // Per-post dynamic anonymous identity state
   const [anonNumber, setAnonNumber] = useState(() => Math.floor(100 + Math.random() * 899));
@@ -225,6 +273,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
     if (!title.trim() || !content.trim()) return;
 
     const schoolObj = schools.find(s => s.id === selectedSchoolId) || defaultSchool || schools[0];
+    const isGlobalLounge = schoolObj.id === 'all-schools' || schoolObj.id === 'all' || schoolObj.slug === 'sanh-chung-public' || schoolObj.name.includes('Sảnh Chung');
     const isIdentityPublic = postingMode === 'identity';
 
     setIsSubmitting(true);
@@ -232,10 +281,11 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
 
     const currentMajor = userState?.schoolVerifications?.[schoolObj.id]?.major || userState?.verifiedMajor;
 
-    if (isIdentityPublic && !isLocked) {
+    // In a specific school, require locking school identity to prevent impersonation. In Sảnh Chung, real name is sufficient!
+    if (isIdentityPublic && !isGlobalLounge && !isLocked) {
       setIsSubmitting(false);
       setModerationFeedback({
-        flagReason: 'Bạn cần khóa danh tính học đường trước khi đăng bài ở chế độ Danh tính chính để bảo đảm tính chuẩn xác và chống giả mạo trong trường.',
+        flagReason: 'Bạn cần khóa danh tính học đường cho trường này trước khi đăng bài ở chế độ Danh tính chính để bảo đảm tính chuẩn xác và chống giả mạo trong trường.',
         suggestion: 'Hãy nhấn vào Cài đặt Hồ sơ để Khóa danh tính (1 lần duy nhất) hoặc Quét Thẻ AI.'
       });
       return;
@@ -253,13 +303,13 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
       isPublic,
       imageUrl: imagePreview || undefined,
       imageAnalysis: imageAnalysisResult || undefined,
-      expiryDurationDays: expiryDays,
-      isAnonymousGuest: !isLoggedIn,
-      isIdentityPublic: isIdentityPublic,
+      expiryDurationDays: !isUserLoggedIn && expiryDays === 0 ? 14 : expiryDays,
+      isAnonymousGuest: !isUserLoggedIn,
+      isIdentityPublic: isUserLoggedIn ? isIdentityPublic : false,
       authorDisplayName: isIdentityPublic ? (unifiedRealName || displayName.trim()) : undefined,
       authorAvatarUrl: isIdentityPublic ? avatarUrl : undefined,
-      authorCohort: isIdentityPublic ? (cohortInput.trim() || initialCohort) : undefined,
-      authorMajor: isIdentityPublic ? (schoolMajor || currentMajor || undefined) : undefined
+      authorCohort: (isIdentityPublic && !isGlobalLounge) ? (cohortInput.trim() || initialCohort) : undefined,
+      authorMajor: (isIdentityPublic && !isGlobalLounge) ? (schoolMajor || currentMajor || undefined) : undefined
     });
 
     setIsSubmitting(false);
@@ -289,7 +339,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
         <div className="flex items-center justify-between pb-4 border-b border-[#E5E2D9] dark:border-[#3A4738] mb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full bg-[#8BA888]/20 text-[#2A4228] dark:text-[#8BA888] flex items-center justify-center border border-[#8BA888]/30">
-              <span className="material-symbols-outlined text-xl">edit_note</span>
+              <FileEdit className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-serif italic font-bold text-lg text-[#182217] dark:text-[#E8ECE6] leading-tight">
@@ -305,7 +355,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-full text-[#A4A095] hover:text-[#3A4036] dark:hover:text-[#E8ECE6] hover:bg-[#FAF9F6] dark:hover:bg-[#20281F]"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -313,7 +363,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
         {moderationFeedback && (
           <div className="mb-3 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-300 space-y-2 animate-bounce-short">
             <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
-              <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+              <ShieldAlert className="w-4 h-4" />
               <span>AI Nhắc nhở văn minh & an toàn</span>
             </div>
             <p className="leading-relaxed">{moderationFeedback.flagReason}</p>
@@ -328,7 +378,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] space-y-3 shadow-2xs">
             <div className="flex items-center justify-between">
               <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#2A4228] dark:text-[#8BA888] flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">switch_account</span>
+                <Users className="w-3.5 h-3.5" />
                 <span>Chế độ xuất hiện của tác giả</span>
               </label>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
@@ -356,35 +406,35 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
 
               <button
                 type="button"
+                disabled={!isUserLoggedIn}
                 onClick={() => {
-                  if (!userState?.isLoggedIn || !userState?.googleUser?.email) {
-                    if (onOpenLogin) {
-                      onOpenLogin();
-                    }
-                    return;
+                  if (isUserLoggedIn) {
+                    setPostingMode('identity');
                   }
-                  setPostingMode('identity');
                 }}
                 className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all text-left relative ${
-                  postingMode === 'identity'
+                  !isUserLoggedIn
+                    ? 'opacity-60 cursor-not-allowed bg-[#F4F5F2] dark:bg-[#151C14]/50 border-[#E5EADF] dark:border-[#2A3428] text-[#8E9B8A]'
+                    : postingMode === 'identity'
                     ? 'bg-[#2A4228] text-white border-[#2A4228] shadow-xs'
-                    : 'bg-white dark:bg-[#151C14] border-[#DCE4D8] dark:border-[#3A4738] text-[#5A6D58] dark:text-[#8E9B8A]'
+                    : 'bg-white dark:bg-[#151C14] border-[#DCE4D8] dark:border-[#3A4738] text-[#5A6D58] dark:text-[#8E9B8A] hover:border-[#2A4228]'
                 }`}
+                title={!isUserLoggedIn ? "Chế độ hiện danh tính chỉ khả dụng sau khi bạn đăng nhập tài khoản" : undefined}
               >
                 <span className="text-base">👤</span>
                 <div className="min-w-0 flex-1">
                   <div className="font-bold flex items-center justify-between">
                     <span>Hiện Danh Tính Thật</span>
-                    {(!userState?.isLoggedIn || !userState?.googleUser?.email) && (
+                    {!isUserLoggedIn && (
                       <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold flex items-center gap-0.5">
-                        <span className="material-symbols-outlined text-[10px]">lock</span>
-                        <span>Cần Gmail</span>
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Cần đăng nhập</span>
                       </span>
                     )}
                   </div>
                   <div className="text-[9px] opacity-85 font-normal">
-                    {(!userState?.isLoggedIn || !userState?.googleUser?.email)
-                      ? 'Đăng nhập Gmail để mở khóa'
+                    {!isUserLoggedIn
+                      ? 'Chỉ mở khi đã đăng nhập tài khoản'
                       : 'Tên, Avatar & Niên khóa trường'}
                   </div>
                 </div>
@@ -414,7 +464,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                     onClick={handleShuffleIdentity}
                     className="text-[10px] font-bold px-2 py-1 rounded-lg bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-[#EAF0E8] text-[#2A4228] dark:text-[#8BA888] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center gap-1 active:scale-95 transition-all"
                   >
-                    <span className="material-symbols-outlined text-xs">casino</span>
+                    <Shuffle className="w-3 h-3" />
                     <span>Đổi mã mới</span>
                   </button>
                 </div>
@@ -495,45 +545,54 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                       </button>
                     </div>
 
-                    {/* School Major & Cohort Info */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[10px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] shrink-0">Chuyên/Ngành:</span>
-                        <div className="relative flex-1 min-w-0">
-                          <input
-                            type="text"
-                            value={currentVerification?.major || userState?.verifiedMajor || (currentSchoolObj?.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin')}
-                            readOnly
-                            disabled
-                            className="w-full bg-[#2A4228]/5 dark:bg-[#1C241B] border border-[#8BA888]/40 rounded-lg px-2 py-0.5 text-[11px] font-bold text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed truncate"
-                          />
-                        </div>
+                    {/* School Major & Cohort Info for specific schools vs Note for Sảnh Chung */}
+                    {isCurrentSchoolGlobalLounge ? (
+                      <div className="p-2 rounded-lg bg-[#2A4228]/5 dark:bg-[#1C241B] border border-[#8BA888]/30 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
+                        <p className="text-[10px] text-[#2A4228] dark:text-[#8BA888] font-medium leading-tight">
+                          Sảnh Chung Toàn Quốc: Hiển thị với <strong>Họ tên thật</strong> & <strong>Avatar</strong> (không gán niên khóa trường).
+                        </p>
                       </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[10px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] shrink-0">Chuyên/Ngành:</span>
+                          <div className="relative flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={currentVerification?.major || userState?.verifiedMajor || (currentSchoolObj?.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin')}
+                              readOnly
+                              disabled
+                              className="w-full bg-[#2A4228]/5 dark:bg-[#1C241B] border border-[#8BA888]/40 rounded-lg px-2 py-0.5 text-[11px] font-bold text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed truncate"
+                            />
+                          </div>
+                        </div>
 
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[10px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] shrink-0">Khóa:</span>
-                        <div className="relative flex-1 min-w-0">
-                          <input
-                            type="text"
-                            value={cohortInput}
-                            readOnly={isLocked}
-                            disabled={isLocked}
-                            onChange={(e) => !isLocked && setCohortInput(e.target.value)}
-                            placeholder="VD: K21-24, K22..."
-                            className={`w-full border rounded-lg px-2 py-0.5 text-[11px] font-bold ${
-                              isLocked
-                                ? 'bg-[#2A4228]/5 dark:bg-[#1C241B] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed'
-                                : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
-                            }`}
-                          />
-                          {isLocked && (
-                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
-                              🔒
-                            </span>
-                          )}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[10px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] shrink-0">Khóa:</span>
+                          <div className="relative flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={cohortInput}
+                              readOnly={isLocked}
+                              disabled={isLocked}
+                              onChange={(e) => !isLocked && setCohortInput(e.target.value)}
+                              placeholder="VD: K21-24, K22..."
+                              className={`w-full border rounded-lg px-2 py-0.5 text-[11px] font-bold ${
+                                isLocked
+                                  ? 'bg-[#2A4228]/5 dark:bg-[#1C241B] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed'
+                                  : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
+                              }`}
+                            />
+                            {isLocked && (
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                🔒
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -589,7 +648,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                 {!isLocked ? (
                   <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-xs space-y-2 text-amber-900 dark:text-amber-200">
                     <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
-                      <span className="material-symbols-outlined text-sm">lock_clock</span>
+                      <Clock className="w-4 h-4" />
                       <span>Danh tính chưa được khóa chính thức</span>
                     </div>
                     <p className="text-[11px] leading-relaxed opacity-90">
@@ -605,7 +664,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#2A4228] text-white text-[11px] font-bold hover:bg-[#1E301D] transition-colors flex items-center gap-1 shadow-xs"
                         >
-                          <span className="material-symbols-outlined text-xs">manage_accounts</span>
+                          <UserCog className="w-3.5 h-3.5" />
                           <span>Đến Cài đặt để Khóa danh tính</span>
                         </button>
                       )}
@@ -618,7 +677,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                           }}
                           className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#20281F] border border-amber-500/40 text-amber-900 dark:text-amber-200 text-[11px] font-bold hover:bg-amber-500/10 transition-colors flex items-center gap-1"
                         >
-                          <span className="material-symbols-outlined text-xs">document_scanner</span>
+                          <ScanLine className="w-3.5 h-3.5" />
                           <span>Quét Thẻ AI</span>
                         </button>
                       )}
@@ -626,7 +685,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                    <span className="material-symbols-outlined text-xs">verified</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Lá thư sẽ xuất hiện với danh tính đã khóa: <strong>{unifiedRealName}</strong> ({schoolMajor} • {cohortInput}).</span>
                   </div>
                 )}
@@ -649,7 +708,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">public</span>
+                <Globe className="w-5 h-5" />
                 <div>
                   <div className="font-bold">🌐 Sảnh Chung Mọi Trường</div>
                   <div className="text-[9px] opacity-80 font-normal">Mọi người ở tất cả các trường có thể đọc & an ủi</div>
@@ -665,7 +724,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">school</span>
+                <GraduationCap className="w-5 h-5" />
                 <div>
                   <div className="font-bold">🏫 Chỉ Trong Trường</div>
                   <div className="text-[9px] opacity-80 font-normal">Chỉ thành viên thuộc trường được chọn</div>
@@ -711,7 +770,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#3A4036] dark:text-[#E8ECE6] flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-[#8BA888]">auto_awesome</span>
+                        <Sparkles className="w-4 h-4 text-[#8BA888]" />
                         Phân tích từ Gemini AI
                       </span>
                       <button
@@ -747,7 +806,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
               </div>
             ) : (
               <label className="border-2 border-dashed border-[#E5E2D9] dark:border-[#3A4738] hover:border-[#2A4228] rounded-2xl p-3 flex items-center justify-center gap-2 cursor-pointer bg-[#FAF9F6] dark:bg-[#20281F] transition-colors text-xs text-[#5A6D58] dark:text-[#8E9B8A] font-medium">
-                <span className="material-symbols-outlined text-xl text-[#2A4228] dark:text-[#8BA888]">add_photo_alternate</span>
+                <ImagePlus className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
                 <span>Tải ảnh nhật ký, bài vẽ, câu hỏi hoặc tâm sự đính kèm</span>
                 <input
                   type="file"
@@ -820,14 +879,14 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
           <div className="p-3 rounded-2xl bg-[#F8FAF7] dark:bg-[#1E271D] border border-[#E5EADF] dark:border-[#2C3B2A] space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#3B4D39] dark:text-[#8E9B8A] flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-[#2A4228] dark:text-[#8BA888]">hourglass_top</span>
+                <Hourglass className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
                 <span>Thời hạn lưu trữ lá thư</span>
               </label>
               <span className="text-[10px] text-[#2A4228] dark:text-[#8BA888] font-bold flex items-center gap-1">
                 {expiryDays === 0 ? (
-                  <><span className="material-symbols-outlined text-[12px]">all_inclusive</span> Lưu vĩnh viễn</>
+                  <><InfinityIcon className="w-3 h-3" /> Lưu vĩnh viễn</>
                 ) : (
-                  <><span className="material-symbols-outlined text-[12px]">hourglass_empty</span> Tự xóa sau {expiryDays === 1 ? '24 giờ' : `${expiryDays} ngày`}</>
+                  <><Hourglass className="w-3 h-3" /> Tự xóa sau {expiryDays === 1 ? '24 giờ' : `${expiryDays} ngày`}</>
                 )}
               </span>
             </div>
@@ -842,7 +901,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                     : 'bg-white dark:bg-[#20281F] text-[#5A6D58] dark:text-[#8E9B8A] border-[#DCE4D8] dark:border-[#3A4738]'
                 }`}
               >
-                <span className="material-symbols-outlined text-[14px]">bolt</span>
+                <Zap className="w-3.5 h-3.5" />
                 <span>24 giờ</span>
               </button>
 
@@ -872,23 +931,45 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setExpiryDays(0)}
+                disabled={!isUserLoggedIn}
+                onClick={() => {
+                  if (isUserLoggedIn) {
+                    setExpiryDays(0);
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border transition-all ${
-                  expiryDays === 0
+                  !isUserLoggedIn
+                    ? 'opacity-50 cursor-not-allowed bg-[#F4F5F2] dark:bg-[#151C14]/50 text-[#8E9B8A] border-[#DCE4D8] dark:border-[#3A4738]'
+                    : expiryDays === 0
                     ? 'bg-[#2A4228] text-white border-[#2A4228] shadow-xs'
                     : 'bg-white dark:bg-[#20281F] text-[#5A6D58] dark:text-[#8E9B8A] border-[#DCE4D8] dark:border-[#3A4738]'
                 }`}
+                title={!isUserLoggedIn ? "Lưu vĩnh viễn chỉ áp dụng cho người dùng đã đăng nhập" : undefined}
               >
-                <span className="material-symbols-outlined text-[14px]">all_inclusive</span>
-                <span>Vĩnh viễn</span>
+                {!isUserLoggedIn ? (
+                  <>
+                    <Lock className="w-3 h-3 text-amber-600" />
+                    <span>Vĩnh viễn (Cần đăng nhập)</span>
+                  </>
+                ) : (
+                  <>
+                    <InfinityIcon className="w-3.5 h-3.5" />
+                    <span>Vĩnh viễn</span>
+                  </>
+                )}
               </button>
             </div>
+            {!isUserLoggedIn && (
+              <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] italic pt-0.5">
+                * Khách chưa đăng nhập: Bài viết sẽ tự động hết hạn và xóa sau tối đa 14 ngày. Hãy đăng nhập để lưu vĩnh viễn và đồng bộ lá thư.
+              </p>
+            )}
           </div>
 
           {/* Submit Action Buttons */}
           <div className="pt-2 flex items-center justify-between border-t border-[#E5E2D9] dark:border-[#3A4738]">
             <div className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A] flex items-center gap-1 font-medium">
-              <span className="material-symbols-outlined text-sm text-[#2A4228] dark:text-[#8BA888]">verified_user</span>
+              <ShieldCheck className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
               <span>Kiểm duyệt bởi Gemini AI</span>
             </div>
 
@@ -913,7 +994,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-sm">send</span>
+                    <Send className="w-3.5 h-3.5" />
                     <span>{postingMode === 'anonymous' ? 'Gửi Thư Ẩn Danh' : 'Gửi Thư Với Danh Tính'}</span>
                   </>
                 )}

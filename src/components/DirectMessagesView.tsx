@@ -13,7 +13,19 @@ import {
   ArrowLeft,
   Bot,
   User,
-  GraduationCap
+  GraduationCap,
+  MessageSquare,
+  Plus,
+  X,
+  SearchX,
+  RefreshCw,
+  MoreVertical,
+  Eraser,
+  MailCheck,
+  Copy,
+  Pencil,
+  Undo2,
+  MinusCircle
 } from 'lucide-react';
 import { DirectThread, DirectMessage } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
@@ -237,7 +249,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
           <div className="p-3 sm:p-4 border-b border-[#E5E2D9] dark:border-[#3A4738] flex items-center justify-between gap-2 min-w-0">
             <div className="min-w-0">
               <h2 className="font-serif italic font-bold text-sm sm:text-base text-[#3A4036] dark:text-[#E8ECE6] flex items-center gap-1.5 truncate">
-                <span className="material-symbols-outlined text-[#5A6E58] dark:text-[#8BA888] text-lg sm:text-xl shrink-0">chat_bubble</span>
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-[#5A6E58] dark:text-[#8BA888] shrink-0" />
                 <span className="truncate">Hộp thư 1-1 Ẩn danh</span>
               </h2>
               <p className="text-[10px] text-[#7E7A71] dark:text-[#8E9B8A] truncate">Bảo mật & Không phán xét</p>
@@ -248,7 +260,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
               className="px-2.5 py-1.5 rounded-xl bg-[#2A4228] text-white hover:bg-[#1B2C1A] transition-all flex items-center gap-1 text-[11px] font-bold shadow-xs active:scale-95 shrink-0"
               title="Bắt đầu cuộc trò chuyện mới"
             >
-              <span className="material-symbols-outlined text-xs">add</span>
+              <Plus className="w-3.5 h-3.5" />
               <span>Mới</span>
             </button>
           </div>
@@ -256,7 +268,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
           {/* Search Bar */}
           <div className="px-2.5 pt-2.5 pb-1.5">
             <div className="relative w-full">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#8E9B8A]">search</span>
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E9B8A]" />
               <input
                 type="text"
                 value={searchQuery}
@@ -269,7 +281,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#8E9B8A] hover:text-[#182217]"
                 >
-                  <span className="material-symbols-outlined text-xs">close</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -326,7 +338,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
           <div className="flex-1 overflow-y-auto p-2 space-y-1 min-w-0">
             {filteredThreads.length === 0 ? (
               <div className="p-4 text-center text-xs text-[#8E9B8A] space-y-2">
-                <span className="material-symbols-outlined text-2xl text-[#5A6E58]">search_off</span>
+                <SearchX className="w-8 h-8 text-[#5A6E58] mx-auto" />
                 <p>Không tìm thấy hội thoại phù hợp.</p>
                 <button
                   onClick={() => {
@@ -406,7 +418,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                         className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-500 text-[#8E9B8A] transition-opacity shrink-0"
                         title="Xóa hội thoại"
                       >
-                        <span className="material-symbols-outlined text-xs">delete</span>
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -430,7 +442,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                   className="sm:hidden p-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 text-[#2A4228] dark:text-[#8BA888] flex items-center gap-1 shrink-0 text-xs font-bold"
                   title="Xem danh sách hội thoại"
                 >
-                  <span className="material-symbols-outlined text-base">arrow_back</span>
+                  <ArrowLeft className="w-4 h-4" />
                   <span className="text-[10px]">Danh sách</span>
                 </button>
 
@@ -470,7 +482,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                   className="hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8BA888]/15 hover:bg-[#8BA888]/25 text-[#2A4228] dark:text-[#8BA888] text-[11px] font-bold transition-all active:scale-95"
                   title="Đổi đối tượng trò chuyện"
                 >
-                  <span className="material-symbols-outlined text-xs">sync_alt</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
                   <span>Đổi người nghe</span>
                 </button>
 
@@ -488,7 +500,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                     className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[#8E9B8A] transition-colors"
                     title="Tùy chọn hội thoại"
                   >
-                    <span className="material-symbols-outlined text-sm">more_vert</span>
+                    <MoreVertical className="w-4 h-4" />
                   </button>
 
                   {isHeaderMenuOpen && (
@@ -507,7 +519,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[#2A4228] dark:text-[#8BA888]"
                         >
-                          <span className="material-symbols-outlined text-sm">cleaning_services</span>
+                          <Eraser className="w-4 h-4" />
                           <span>Xóa sạch lịch sử</span>
                         </button>
                       )}
@@ -522,7 +534,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400"
                         >
-                          <span className="material-symbols-outlined text-sm">delete</span>
+                          <Trash2 className="w-4 h-4" />
                           <span>Xóa cuộc trò chuyện</span>
                         </button>
                       )}
@@ -536,7 +548,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
             {currentThread.relatedPostTitle && (
               <div className="px-3 py-2 bg-gradient-to-r from-rose-500/10 via-[#FAF9F6] to-[#FAF9F6] dark:from-rose-950/20 dark:via-[#20281F] dark:to-[#20281F] border-b border-[#E5E2D9] dark:border-[#3A4738] flex items-center justify-between gap-2 text-xs min-w-0 shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="material-symbols-outlined text-rose-600 dark:text-rose-400 text-base shrink-0">mark_email_read</span>
+                  <MailCheck className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] sm:text-[11px] text-[#42493F] dark:text-[#8E9B8A] truncate">
                       An ủi tác giả lá thư: <strong className="text-[#182217] dark:text-[#E8ECE6]">«{currentThread.relatedPostTitle}»</strong>
@@ -598,7 +610,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                             className="opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-[#8E9B8A] transition-opacity"
                             title="Tùy chọn tin nhắn"
                           >
-                            <span className="material-symbols-outlined text-sm">more_vert</span>
+                            <MoreVertical className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Action Popover Menu */}
@@ -612,7 +624,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                   onClick={() => handleCopyMessage(msg.text)}
                                   className="w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2"
                                 >
-                                  <span className="material-symbols-outlined text-xs">content_copy</span>
+                                  <Copy className="w-3.5 h-3.5" />
                                   <span>Sao chép</span>
                                 </button>
                               )}
@@ -625,7 +637,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                   }}
                                   className="w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2"
                                 >
-                                  <span className="material-symbols-outlined text-xs">edit</span>
+                                  <Pencil className="w-3.5 h-3.5" />
                                   <span>Chỉnh sửa</span>
                                 </button>
                               )}
@@ -638,7 +650,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                   }}
                                   className="w-full px-3 py-1.5 text-left hover:bg-rose-500/10 flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium"
                                 >
-                                  <span className="material-symbols-outlined text-xs">undo</span>
+                                  <Undo2 className="w-3.5 h-3.5" />
                                   <span>Thu hồi (Gỡ mọi người)</span>
                                 </button>
                               )}
@@ -650,7 +662,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                 }}
                                 className="w-full px-3 py-1.5 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400"
                               >
-                                <span className="material-symbols-outlined text-xs">delete</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                                 <span>Xóa ở phía bạn</span>
                               </button>
                             </div>
@@ -661,7 +673,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                       {/* Message Bubble Content */}
                       {msg.isRevoked ? (
                         <div className="p-2 sm:p-2.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-dashed border-[#8E9B8A]/40 text-[#8E9B8A] text-xs italic flex items-center gap-1.5 select-none">
-                          <span className="material-symbols-outlined text-xs text-[#8E9B8A]">remove_circle_outline</span>
+                          <MinusCircle className="w-3.5 h-3.5 text-[#8E9B8A]" />
                           <span>{msg.isMe ? 'Bạn đã thu hồi một tin nhắn' : 'Tin nhắn đã được thu hồi'}</span>
                         </div>
                       ) : (
@@ -692,7 +704,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                             className="opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-[#8E9B8A] transition-opacity"
                             title="Tùy chọn tin nhắn"
                           >
-                            <span className="material-symbols-outlined text-sm">more_vert</span>
+                            <MoreVertical className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Action Popover Menu for peer messages */}
@@ -706,7 +718,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                   onClick={() => handleCopyMessage(msg.text)}
                                   className="w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2"
                                 >
-                                  <span className="material-symbols-outlined text-xs">content_copy</span>
+                                  <Copy className="w-3.5 h-3.5" />
                                   <span>Sao chép</span>
                                 </button>
                               )}
@@ -718,7 +730,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                                 }}
                                 className="w-full px-3 py-1.5 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400"
                               >
-                                <span className="material-symbols-outlined text-xs">delete</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                                 <span>Xóa ở phía bạn</span>
                               </button>
                             </div>
@@ -812,7 +824,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#2A4228] hover:bg-[#1B2C1A] text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all active:scale-90 shadow-sm"
                 title="Gửi tin nhắn (Enter)"
               >
-                <span className="material-symbols-outlined text-base sm:text-lg">send</span>
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </form>
           </div>
@@ -828,9 +840,11 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 animate-scale-up">
             <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400">
-              <span className="material-symbols-outlined text-2xl">
-                {deleteConfirmModal.actionType === 'revoke' ? 'undo' : 'delete'}
-              </span>
+              {deleteConfirmModal.actionType === 'revoke' ? (
+                <Undo2 className="w-6 h-6 text-amber-600" />
+              ) : (
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              )}
               <h3 className="font-serif font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
                 {deleteConfirmModal.actionType === 'revoke' ? 'Thu hồi tin nhắn?' : 'Xóa ở phía bạn?'}
               </h3>
@@ -870,14 +884,14 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
           <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4 animate-scale-up">
             <div className="flex items-center justify-between">
               <h3 className="font-serif font-bold text-base text-[#182217] dark:text-[#E8ECE6] flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm text-[#2A4228] dark:text-[#8BA888]">edit</span>
+                <Pencil className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
                 <span>Chỉnh sửa tin nhắn</span>
               </h3>
               <button
                 onClick={() => setEditingMessageModal(null)}
                 className="p-1 rounded-lg hover:bg-black/5 text-[#8E9B8A]"
               >
-                <span className="material-symbols-outlined text-base">close</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -919,7 +933,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                 onClick={() => setIsNewChatModalOpen(false)}
                 className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[#8E9B8A]"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
 

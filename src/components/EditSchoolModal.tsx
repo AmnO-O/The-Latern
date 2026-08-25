@@ -1,4 +1,14 @@
 import React, { useState } from 'react';
+import { 
+  ShieldAlert, 
+  X, 
+  GraduationCap, 
+  BookOpen, 
+  Upload, 
+  Trash2, 
+  Loader2, 
+  CheckCircle2 
+} from 'lucide-react';
 import { School } from '../types';
 
 interface EditSchoolModalProps {
@@ -105,7 +115,7 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-[#E5E2D9] dark:border-[#2C382A]">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/30">
-              <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+              <ShieldAlert className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-serif font-bold text-base text-[#0F180E] dark:text-[#E8ECE6]">
@@ -120,7 +130,7 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-[#5A6E58] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -142,10 +152,10 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
                   className="w-full h-full object-contain"
                   onError={() => setPreviewError(true)}
                 />
+              ) : type === 'highschool' ? (
+                <BookOpen className="w-6 h-6 text-[#5A6E58] dark:text-[#8BA888]" />
               ) : (
-                <span className="material-symbols-outlined text-2xl text-[#5A6E58] dark:text-[#8BA888]">
-                  {type === 'highschool' ? 'local_library' : 'school'}
-                </span>
+                <GraduationCap className="w-6 h-6 text-[#5A6E58] dark:text-[#8BA888]" />
               )}
             </div>
 
@@ -186,8 +196,8 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
 
             <div className="flex items-center gap-2 pt-1">
               <span className="text-[10px] text-[#5A6E58] dark:text-[#8E9B8A] font-medium">Hoặc</span>
-              <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 border border-[#C8D2C4] dark:border-[#3A4738] text-[11px] font-bold text-[#0F180E] dark:text-[#E8ECE6]">
-                <span className="material-symbols-outlined text-xs">upload</span>
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 border border-[#C8D2C4] dark:border-[#3A4738] text-[11px] font-bold text-[#0F180E] dark:text-[#E8ECE6]">
+                <Upload className="w-3.5 h-3.5" />
                 <span>Tải ảnh từ máy tính (PNG/JPG)</span>
                 <input
                   type="file"
@@ -307,7 +317,7 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
                   disabled={isDeleting || isSaving}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/30 text-xs font-bold transition-all disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-xs">delete</span>
+                  <Trash2 className="w-3.5 h-3.5" />
                   <span>Xóa trường</span>
                 </button>
               )
@@ -330,12 +340,12 @@ export const EditSchoolModal: React.FC<EditSchoolModalProps> = ({
               >
                 {isSaving ? (
                   <>
-                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Đang lưu...</span>
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    <CheckCircle2 className="w-4 h-4" />
                     <span>Lưu vào Database</span>
                   </>
                 )}

@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
+import { 
+  PlusCircle, 
+  RotateCw, 
+  Database, 
+  Search, 
+  X, 
+  ShieldCheck, 
+  BookOpen, 
+  GraduationCap, 
+  Edit, 
+  Trash2, 
+  MapPin 
+} from 'lucide-react';
 import { School, SchoolType } from '../types';
 
 interface ExploreViewProps {
   schools: School[];
   isAdmin?: boolean;
-  onEditSchool?: (school: School) => void;
+  onEditSchool?: (school) => void;
   onDeleteSchool?: (schoolId: string) => void;
   onSeedSchools?: () => Promise<void> | void;
   onSelectSchool: (school: School) => void;
@@ -102,7 +115,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 onClick={() => setIsAddingNewSchool(true)}
                 className="px-3 py-1.5 rounded-xl bg-[#2A4228] text-white text-xs font-bold hover:bg-[#1B2C1A] transition-all shadow-xs flex items-center gap-1 active:scale-95"
               >
-                <span className="material-symbols-outlined text-sm">add_circle</span>
+                <PlusCircle className="w-4 h-4" />
                 <span>Thêm trường vào DB</span>
               </button>
 
@@ -112,7 +125,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1C231B] border border-amber-500/40 text-amber-800 dark:text-amber-300 text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50"
                 title="Nạp danh sách trường THPT & ĐH mẫu vào Firestore"
               >
-                <span className="material-symbols-outlined text-sm">{isSeeding ? 'sync' : 'database'}</span>
+                {isSeeding ? <RotateCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
                 <span>{isSeeding ? 'Đang nạp...' : 'Nạp dữ liệu trường chuẩn'}</span>
               </button>
             </div>
@@ -122,9 +135,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         {/* Search & Filter Controls */}
         <div className="mt-6 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#2C382A] dark:text-[#8E9B8A]">
-              search
-            </span>
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#2C382A] dark:text-[#8E9B8A]" />
             <input
               type="text"
               value={search}
@@ -180,7 +191,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 onClick={() => setIsAddingNewSchool(false)}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-[#5A6E58] dark:text-[#8E9B8A] hover:bg-black/5"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -281,7 +292,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               onClick={handleCreateAndSelect}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold transition-all shadow-md active:scale-95"
             >
-              <span className="material-symbols-outlined text-sm">add_circle</span>
+              <PlusCircle className="w-4 h-4" />
               <span>Khởi tạo Campus Hub cho "{search}"</span>
             </button>
           ) : (
@@ -290,7 +301,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 onClick={onOpenVerify}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold transition-all shadow-md active:scale-95"
               >
-                <span className="material-symbols-outlined text-sm">verified_user</span>
+                <ShieldCheck className="w-4 h-4" />
                 <span>Xác thực & Tạo Campus Hub</span>
               </button>
               {isAdmin && onSeedSchools && (
@@ -298,7 +309,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                   onClick={handleTriggerSeeding}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md active:scale-95"
                 >
-                  <span className="material-symbols-outlined text-sm">database</span>
+                  <Database className="w-4 h-4" />
                   <span>Nạp danh sách trường mẫu vào DB</span>
                 </button>
               )}
@@ -320,9 +331,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       ? 'bg-[#EAF0E8] dark:bg-[#2A3628] text-[#2A4228] dark:text-[#8BA888] border-[#C8D2C4] dark:border-[#3A4738]'
                       : 'bg-[#FEFAE0] dark:bg-[#2F382A] text-[#AA6828] border-[#C8D2C4] dark:border-[#3A4738]'
                   }`}>
-                    <span className="material-symbols-outlined text-xs">
-                      {s.type === 'highschool' ? 'local_library' : 'school'}
-                    </span>
+                    {s.type === 'highschool' ? <BookOpen className="w-3.5 h-3.5" /> : <GraduationCap className="w-3.5 h-3.5" />}
                     <span>{s.type === 'highschool' ? 'THPT' : 'Đại Học'}</span>
                   </span>
                   
@@ -336,7 +345,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             className="p-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs transition-colors"
                             title="Chỉnh sửa thông tin trường"
                           >
-                            <span className="material-symbols-outlined text-xs">edit</span>
+                            <Edit className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {onDeleteSchool && (
@@ -367,14 +376,14 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                               className="p-1 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-700 dark:text-red-300 border border-red-500/30 text-xs transition-colors"
                               title="Xóa trường khỏi Database"
                             >
-                              <span className="material-symbols-outlined text-xs">delete</span>
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )
                         )}
                       </div>
                     )}
                     <span className="text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold shrink-0 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">location_on</span>
+                      <MapPin className="w-3.5 h-3.5" />
                       {s.location}
                     </span>
                   </div>

@@ -1,4 +1,13 @@
 import React, { useState } from 'react';
+import { 
+  Share2, 
+  X, 
+  Share, 
+  Link as LinkIcon, 
+  CheckCircle2, 
+  Copy, 
+  Quote 
+} from 'lucide-react';
 import { Post } from '../types';
 
 interface ShareModalProps {
@@ -52,7 +61,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
 
         <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888]">share</span>
+            <Share2 className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
             <h3 className="font-serif italic font-bold text-lg text-[#0F180E] dark:text-[#E8ECE6]">
               Chia sẻ lá thư ấm áp
             </h3>
@@ -61,7 +70,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
             onClick={onClose}
             className="p-1 rounded-full text-[#2C382A] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -87,7 +96,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
               onClick={handleNativeShare}
               className="w-full py-2.5 px-4 rounded-xl bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
             >
-              <span className="material-symbols-outlined text-base">ios_share</span>
+              <Share className="w-4 h-4" />
               <span>Chia sẻ qua ứng dụng trên máy (Zalo, Messenger, Mail...)</span>
             </button>
           )}
@@ -98,12 +107,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
             className="w-full py-2.5 px-4 rounded-xl bg-[#FAF9F6] dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] hover:border-[#2A4228] text-[#0F180E] dark:text-[#E8ECE6] text-xs font-bold flex items-center justify-between transition-all active:scale-95"
           >
             <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base text-[#2A4228] dark:text-[#8BA888]">link</span>
+              <LinkIcon className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
               <span>{copiedLink ? 'Đã sao chép liên kết!' : 'Sao chép đường dẫn bài viết'}</span>
             </span>
-            <span className="material-symbols-outlined text-sm text-[#2C382A] dark:text-[#8E9B8A]">
-              {copiedLink ? 'check_circle' : 'content_copy'}
-            </span>
+            {copiedLink ? (
+              <CheckCircle2 className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
+            ) : (
+              <Copy className="w-4 h-4 text-[#2C382A] dark:text-[#8E9B8A]" />
+            )}
           </button>
 
           {/* Copy Formatted Quote */}
@@ -112,12 +123,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ post, isOpen, onClose })
             className="w-full py-2.5 px-4 rounded-xl bg-[#FAF9F6] dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] hover:border-[#2A4228] text-[#0F180E] dark:text-[#E8ECE6] text-xs font-bold flex items-center justify-between transition-all active:scale-95"
           >
             <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base text-[#2A4228] dark:text-[#8BA888]">format_quote</span>
+              <Quote className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
               <span>{copiedQuote ? 'Đã sao chép trích dẫn!' : 'Sao chép đoạn trích kèm lời nhắn'}</span>
             </span>
-            <span className="material-symbols-outlined text-sm text-[#2C382A] dark:text-[#8E9B8A]">
-              {copiedQuote ? 'check_circle' : 'content_copy'}
-            </span>
+            {copiedQuote ? (
+              <CheckCircle2 className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
+            ) : (
+              <Copy className="w-4 h-4 text-[#2C382A] dark:text-[#8E9B8A]" />
+            )}
           </button>
         </div>
 

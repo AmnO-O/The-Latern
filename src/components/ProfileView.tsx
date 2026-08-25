@@ -1,5 +1,28 @@
 import React, { useState } from 'react';
-import { BadgeCheck, Lock, HeartHandshake, Sparkles, Trophy, GraduationCap, ShieldCheck, User, Camera, Check, RefreshCw } from 'lucide-react';
+import { 
+  BadgeCheck, 
+  Lock, 
+  HeartHandshake, 
+  Sparkles, 
+  Trophy, 
+  GraduationCap, 
+  ShieldCheck, 
+  User, 
+  Camera, 
+  Check, 
+  RefreshCw,
+  IdCard,
+  FileEdit,
+  Save,
+  Building,
+  Edit,
+  X,
+  Upload,
+  AlertTriangle,
+  Gavel,
+  UserCog,
+  Bookmark
+} from 'lucide-react';
 import { Post, UserState, School } from '../types';
 import { PostCard } from './PostCard';
 import { calculateReputationScore, getReputationRank, getNextRankProgress } from '../lib/reputationUtils';
@@ -86,7 +109,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setUserState(prev => {
       const updated = { ...prev, displayName: name, verifiedFullName: name };
       try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
+        localStorage.setItem('lantern_user_state', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -97,7 +120,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setUserState(prev => {
       const updated = { ...prev, customAvatarUrl: url };
       try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
+        localStorage.setItem('lantern_user_state', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -224,7 +247,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       };
 
       try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updatedState));
+        localStorage.setItem('lantern_user_state', JSON.stringify(updatedState));
       } catch (e) {}
 
       return updatedState;
@@ -252,7 +275,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         schoolVerifications: updatedVerifications
       };
       try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
+        localStorage.setItem('lantern_user_state', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -264,7 +287,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setUserState(prev => {
       const updated = { ...prev, activePostingMode: mode };
       try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
+        localStorage.setItem('lantern_user_state', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -317,36 +340,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </p>
         </div>
 
-        {/* Default Posting Mode Toggle Pills */}
-        <div className="p-2 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between gap-2 max-w-md mx-auto">
-          <span className="text-[11px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] pl-2">
-            Chế độ đăng mặc định:
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleTogglePostingMode('anonymous')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                (userState.activePostingMode || 'anonymous') === 'anonymous'
-                  ? 'bg-[#2A4228] text-white shadow-xs'
-                  : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              <span>🎭 Ẩn danh</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTogglePostingMode('identity')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                userState.activePostingMode === 'identity'
-                  ? 'bg-[#2A4228] text-white shadow-xs'
-                  : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              <span>👤 Danh tính chính</span>
-            </button>
+        {/* Default Posting Mode Toggle Pills (Chỉ hiển thị khi đã đăng nhập) */}
+        {isLoggedInWithGmail && (
+          <div className="p-2 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between gap-2 max-w-md mx-auto">
+            <span className="text-[11px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] pl-2">
+              Chế độ đăng mặc định:
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleTogglePostingMode('anonymous')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  (userState.activePostingMode || 'anonymous') === 'anonymous'
+                    ? 'bg-[#2A4228] text-white shadow-xs'
+                    : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                <span>🎭 Ẩn danh</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTogglePostingMode('identity')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  userState.activePostingMode === 'identity'
+                    ? 'bg-[#2A4228] text-white shadow-xs'
+                    : 'text-[#5A6D58] dark:text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                <span>👤 Danh tính chính</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Reputation Trust Meter Panel */}
         <div className="p-4 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] text-left space-y-3">
@@ -468,7 +493,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="flex items-center justify-between border-b border-[#E5E2D9] dark:border-[#3A4738] pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#2A4228]/15 text-[#2A4228] dark:text-[#8BA888] flex items-center justify-center">
-                <span className="material-symbols-outlined text-lg">badge</span>
+                <IdCard className="w-4 h-4" />
               </div>
               <div>
                 <h2 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
@@ -493,7 +518,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {userState.isIdentityLocked ? (
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
-                <span className="material-symbols-outlined text-base">lock</span>
+                <Lock className="w-4 h-4" />
               </div>
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300">
@@ -508,7 +533,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           ) : (
             <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-amber-600 text-white shrink-0 shadow-xs">
-                <span className="material-symbols-outlined text-base">edit_note</span>
+                <FileEdit className="w-4 h-4" />
               </div>
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800 dark:text-amber-300">
@@ -522,10 +547,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           )}
 
           {/* Global Unified Real Full Name Card */}
-          <div className="p-4 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] text-left space-y-2">
+          <div className="p-4 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] text-left space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A]">
-                Họ và tên thật (Thống nhất cho mọi trường học)
+                Họ và tên thật (Dùng cho Sảnh Chung & Thống nhất toàn hệ thống)
               </label>
               {userState.isIdentityLocked ? (
                 <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
@@ -533,33 +558,51 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </span>
               ) : (
                 <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">
-                  Duy nhất & Không đổi giữa các trường
+                  Hiển thị tại Sảnh Chung & Mọi trường
                 </span>
               )}
             </div>
 
-            <div className="relative">
-              <input
-                type="text"
-                value={userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName}
-                readOnly={userState.isIdentityLocked}
-                disabled={userState.isIdentityLocked}
-                onChange={(e) => setManualFullName(e.target.value)}
-                placeholder="VD: Nguyễn Hoàng Nam..."
-                className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
-                  userState.isIdentityLocked
-                    ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#182217] dark:text-[#E8ECE6] cursor-not-allowed select-all'
-                    : 'bg-white dark:bg-[#151C14] border-[#C8D2C4] dark:border-[#3A4738] text-[#182217] dark:text-[#E8ECE6] focus:outline-none focus:border-[#2A4228]'
-                }`}
-              />
-              {userState.isIdentityLocked && (
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400" title="Đã khóa chống sửa đổi">
-                  ✓
-                </span>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="relative flex-1 w-full">
+                <input
+                  type="text"
+                  value={userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName}
+                  readOnly={userState.isIdentityLocked}
+                  disabled={userState.isIdentityLocked}
+                  onChange={(e) => setManualFullName(e.target.value)}
+                  placeholder="VD: Nguyễn Hoàng Nam..."
+                  className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
+                    userState.isIdentityLocked
+                      ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#182217] dark:text-[#E8ECE6] cursor-not-allowed select-all'
+                      : 'bg-white dark:bg-[#151C14] border-[#C8D2C4] dark:border-[#3A4738] text-[#182217] dark:text-[#E8ECE6] focus:outline-none focus:border-[#2A4228]'
+                  }`}
+                />
+                {userState.isIdentityLocked && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400" title="Đã khóa chống sửa đổi">
+                    ✓
+                  </span>
+                )}
+              </div>
+
+              {!userState.isIdentityLocked && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = manualFullName.trim();
+                    if (!trimmed) return;
+                    handleUpdateDisplayName(trimmed);
+                    showSaveNotification('Đã lưu Họ và tên thật thành công!');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#2A4228] hover:bg-[#1E301D] text-white text-xs font-bold shrink-0 shadow-xs flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Lưu Tên Thật</span>
+                </button>
               )}
             </div>
             <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] italic">
-              *Họ tên thật chính xác theo giấy tờ hoặc thẻ sinh viên/học sinh để đảm bảo tính xác thực 100%.
+              *Tại <strong>Sảnh Chung Toàn Quốc</strong>, bài viết công khai sẽ chỉ hiển thị Họ tên thật & Avatar này (không gắn niên khóa trường cụ thể).
             </p>
           </div>
 
@@ -579,17 +622,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </button>
             </div>
 
-            {/* Render School Cards */}
+            {/* Render School Cards (Exclude Sảnh Chung / Global Lounge) */}
             {(() => {
-              const displaySchools = (userState.verifiedSchools && userState.verifiedSchools.length > 0)
+              const rawSchools = (userState.verifiedSchools && userState.verifiedSchools.length > 0)
                 ? userState.verifiedSchools
                 : (userState.selectedSchool ? [userState.selectedSchool] : []);
+
+              const displaySchools = rawSchools.filter(
+                sch => sch.id !== 'all-schools' && sch.id !== 'all' && !sch.slug?.includes('sanh-chung') && !sch.name?.includes('Sảnh Chung')
+              );
 
               if (displaySchools.length === 0) {
                 return (
                   <div className="p-4 rounded-2xl border border-dashed border-[#C8D2C4] dark:border-[#3A4738] text-center space-y-2">
                     <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A]">
-                      Bạn chưa xác thực thẻ trường học nào. Hãy xác thực để nhận huy hiệu chính thức và mở khóa Hộp thư trường!
+                      Bạn chưa xác thực thẻ trường học nào. Hãy xác thực để nhận huy hiệu trường học chính thức và mở khóa Hộp thư trường!
                     </p>
                     <button
                       type="button"
@@ -626,9 +673,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
                               isSchoolLocked ? 'bg-[#2A4228] text-white' : 'bg-amber-600 text-white'
                             }`}>
-                              <span className="material-symbols-outlined text-lg">
-                                {sch.type === 'university' ? 'school' : 'apartment'}
-                              </span>
+                              {sch.type === 'university' ? (
+                                <GraduationCap className="w-5 h-5" />
+                              ) : (
+                                <Building className="w-5 h-5" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
@@ -648,12 +697,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           <div className="shrink-0">
                             {isSchoolLocked ? (
                               <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center gap-1 border border-emerald-500/30">
-                                <span className="material-symbols-outlined text-xs">lock</span>
+                                <Lock className="w-3 h-3" />
                                 <span>Đã Khóa AI</span>
                               </span>
                             ) : (
                               <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1 border border-amber-500/30">
-                                <span className="material-symbols-outlined text-xs">edit</span>
+                                <Edit className="w-3 h-3" />
                                 <span>Chưa Khóa</span>
                               </span>
                             )}
@@ -714,7 +763,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                               onClick={() => handleInitiateLockForSchool(sch, schoolMajor, schoolCohort)}
                               className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-[#2A4228] hover:bg-[#1E301D] text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all"
                             >
-                              <span className="material-symbols-outlined text-sm">lock</span>
+                              <Lock className="w-3.5 h-3.5" />
                               <span>Khóa Danh Tính Cho Trường Này 🔒</span>
                             </button>
                           </div>
@@ -744,7 +793,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 onClick={() => setIsEditingAvatarModal(false)}
                 className="p-1 rounded-full text-[#A4A095] hover:text-[#182217] dark:hover:text-white"
               >
-                <span className="material-symbols-outlined text-xl">close</span>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -795,7 +844,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Upload from Computer */}
             <div className="pt-2 border-t border-[#E5E2D9] dark:border-[#3A4738] space-y-2">
               <label className="block text-center py-2.5 px-4 rounded-2xl border-2 border-dashed border-[#2A4228] bg-[#FAF9F6] dark:bg-[#1E271D] text-xs font-bold text-[#2A4228] dark:text-[#8BA888] cursor-pointer hover:bg-[#EAF0E8] transition-colors">
-                <span className="material-symbols-outlined text-base align-middle mr-1">upload</span>
+                <Upload className="w-4 h-4 inline mr-1" />
                 <span>Tải ảnh đại diện từ máy tính</span>
                 <input
                   type="file"
@@ -815,7 +864,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="bg-[var(--bg-card)] border-2 border-amber-500/40 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 text-left">
             <div className="flex items-center gap-3 border-b border-[#E5E2D9] dark:border-[#3A4738] pb-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                <span className="material-symbols-outlined text-2xl">warning</span>
+                <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="font-serif italic font-bold text-base text-amber-900 dark:text-amber-300">
@@ -830,7 +879,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Strict Format & Punishment Warning Box */}
             <div className="p-4 rounded-2xl bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800 dark:text-rose-300">
-                <span className="material-symbols-outlined text-sm">gavel</span>
+                <Gavel className="w-4 h-4" />
                 <span>CẢNH BÁO QUY CHUẨN VÀ ĐỊNH DẠNG</span>
               </div>
               <p className="text-xs text-rose-900/90 dark:text-rose-200/90 leading-relaxed font-medium">
@@ -908,7 +957,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     : 'bg-neutral-400 cursor-not-allowed opacity-60'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">lock</span>
+                <Lock className="w-3.5 h-3.5" />
                 <span>Xác nhận & Khóa Vĩnh Viễn</span>
               </button>
             </div>
@@ -921,7 +970,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-5 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888]">manage_accounts</span>
+              <UserCog className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
               <span>Chế độ vai trò hoạt động</span>
             </h2>
             <span className="text-[10px] bg-[#8BA888]/20 text-[#2A4228] dark:text-[#8BA888] px-2.5 py-0.5 rounded-full font-bold">
@@ -1000,7 +1049,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Saved Posts List Section */}
       <div className="space-y-4">
         <h2 className="font-serif italic font-bold text-lg text-[#182217] dark:text-[#E8ECE6] flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#2A4228] dark:text-[#8BA888]">bookmark</span>
+          <Bookmark className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888]" />
           <span>Lá thư đã lưu ({savedPosts.length})</span>
         </h2>
 

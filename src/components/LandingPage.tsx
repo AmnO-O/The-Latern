@@ -1,4 +1,15 @@
 import React, { useState } from 'react';
+import { 
+  Search, 
+  FileText, 
+  Headphones, 
+  ArrowRight, 
+  BookOpen, 
+  GraduationCap, 
+  MapPin, 
+  ShieldCheck, 
+  CheckCircle2 
+} from 'lucide-react';
 import { ActiveTab, School } from '../types';
 
 interface LandingPageProps {
@@ -47,7 +58,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Quick Search School Input */}
         <div className="w-full max-w-md bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] glass-panel rounded-full p-2 flex items-center shadow-md mb-6 focus-within:border-[#2A4228] transition-colors">
-          <span className="material-symbols-outlined text-[#2C382A] dark:text-[#8E9B8A] ml-3">search</span>
+          <Search className="w-4 h-4 text-[#2C382A] dark:text-[#8E9B8A] ml-3" />
           <input
             type="text"
             value={searchQuery}
@@ -69,7 +80,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onClick={openComposer}
             className="px-6 py-3 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 active:scale-95"
           >
-            <span className="material-symbols-outlined text-lg">edit_note</span>
+            <FileText className="w-4 h-4" />
             <span>Chia sẻ ẩn danh ngay</span>
           </button>
 
@@ -77,7 +88,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onClick={openEmergency}
             className="px-6 py-3 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-semibold text-sm hover:bg-rose-500/25 transition-all flex items-center gap-2"
           >
-            <span className="material-symbols-outlined text-lg">support_agent</span>
+            <Headphones className="w-4 h-4" />
             <span>Tổng đài trợ giúp khẩn cấp</span>
           </button>
         </div>
@@ -95,7 +106,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             className="text-xs text-[#2A4228] dark:text-[#8BA888] hover:underline flex items-center gap-1 font-bold"
           >
             <span>Xem tất cả ({schools.length})</span>
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -117,13 +128,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         ? 'bg-[#EAF0E8] dark:bg-[#2A3628] text-[#2A4228] dark:text-[#8BA888] border-[#C8D2C4] dark:border-[#3A4738]'
                         : 'bg-[#FEFAE0] dark:bg-[#2F382A] text-[#AA6828] border-[#C8D2C4] dark:border-[#3A4738]'
                     }`}>
-                      <span className="material-symbols-outlined text-xs">
-                        {school.type === 'highschool' ? 'local_library' : 'school'}
-                      </span>
+                      {school.type === 'highschool' ? (
+                        <BookOpen className="w-3.5 h-3.5" />
+                      ) : (
+                        <GraduationCap className="w-3.5 h-3.5" />
+                      )}
                       <span>{school.type === 'highschool' ? 'THPT' : 'Đại Học'}</span>
                     </span>
                     <span className="text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold flex items-center gap-1 shrink-0">
-                      <span className="material-symbols-outlined text-xs">location_on</span>
+                      <MapPin className="w-3.5 h-3.5" />
                       {school.location}
                     </span>
                   </div>
@@ -159,7 +172,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onClick={() => setActiveTab('verify')}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2A4228] text-white text-xs font-bold hover:bg-[#1f311d] transition-all shadow-sm"
             >
-              <span className="material-symbols-outlined text-base">verified_user</span>
+              <ShieldCheck className="w-4 h-4" />
               <span>Xác thực trường học ngay</span>
             </button>
           </div>
@@ -221,15 +234,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
             <div className="pt-2 flex flex-wrap justify-center md:justify-start gap-4 text-xs font-medium text-[#3A4036] dark:text-[#E8ECE6]">
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[#8BA888] text-sm">check_circle</span>
+                <CheckCircle2 className="w-4 h-4 text-[#8BA888]" />
                 100% Ẩn danh danh tính
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[#8BA888] text-sm">check_circle</span>
+                <CheckCircle2 className="w-4 h-4 text-[#8BA888]" />
                 AI Lọc độc hại 24/7
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[#8BA888] text-sm">check_circle</span>
+                <CheckCircle2 className="w-4 h-4 text-[#8BA888]" />
                 Tư vấn tâm lý chuẩn mực
               </span>
             </div>

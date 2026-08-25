@@ -220,8 +220,10 @@ export default function App() {
         } else {
           const isVerified = parsed.verificationStatus === 'verified';
           const hugsRec = parsed.hugsReceivedCount || 0;
+          const isUserLogged = Boolean(parsed.isLoggedIn || parsed.googleUser?.email);
           return {
             ...parsed,
+            activePostingMode: isUserLogged ? (parsed.activePostingMode || 'anonymous') : 'anonymous',
             reputationScore: parsed.reputationScore ?? calculateReputationScore(isVerified, hugsRec),
             selectedSchool: parsed.selectedSchool || (parsed.verifiedSchools?.[0] || PUBLIC_GLOBAL_SCHOOL),
             verifiedSchools: Array.isArray(parsed.verifiedSchools) ? parsed.verifiedSchools : []
@@ -241,7 +243,8 @@ export default function App() {
       hugsReceivedCount: 0,
       reputationScore: 0,
       verifiedSchools: [],
-      schoolVerifications: {}
+      schoolVerifications: {},
+      activePostingMode: 'anonymous'
     };
   });
 

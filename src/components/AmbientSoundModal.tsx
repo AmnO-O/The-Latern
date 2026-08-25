@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  Radio, 
+  X, 
+  Activity, 
+  CloudRain, 
+  Waves, 
+  Trees, 
+  Play, 
+  Pause, 
+  Volume2, 
+  Repeat 
+} from 'lucide-react';
 import { ambientAudio, AMBIENT_SOUND_OPTIONS, AmbientSoundType } from '../lib/audioSynthesizer';
 
 interface AmbientSoundModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const renderSoundIcon = (id: AmbientSoundType) => {
+  switch (id) {
+    case 'solfeggio':
+      return <Activity className="w-5 h-5" />;
+    case 'rain':
+      return <CloudRain className="w-5 h-5" />;
+    case 'waves':
+      return <Waves className="w-5 h-5" />;
+    case 'forest':
+      return <Trees className="w-5 h-5" />;
+    default:
+      return <Radio className="w-5 h-5" />;
+  }
+};
 
 export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, onClose }) => {
   const [isPlaying, setIsPlaying] = useState(ambientAudio.isPlaying());
@@ -53,7 +80,7 @@ export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, on
         <div className="flex items-center justify-between pb-3 shrink-0 border-b border-[#EAF0E8] dark:border-[#2A3628]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#2A4228] text-white flex items-center justify-center shadow-xs shrink-0">
-              <span className="material-symbols-outlined text-xl">graphic_eq</span>
+              <Radio className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-serif text-base sm:text-lg font-bold text-[#2A4228] dark:text-[#8BA888]">
@@ -68,7 +95,7 @@ export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, on
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)] transition-colors shrink-0"
           >
-            <span className="material-symbols-outlined">close</span>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -104,7 +131,7 @@ export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, on
                           ? 'bg-[#2A4228]/15 dark:bg-[#8BA888]/20 text-[#2A4228] dark:text-[#8BA888]'
                           : 'bg-[#8BA888]/15 text-[#2A4228] dark:text-[#8BA888]'
                       }`}>
-                        <span className="material-symbols-outlined text-lg">{opt.icon}</span>
+                        {renderSoundIcon(opt.id)}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -149,9 +176,11 @@ export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, on
                       }`}
                       title={isThisPlaying ? 'Tạm dừng' : 'Phát âm thanh'}
                     >
-                      <span className="material-symbols-outlined text-base">
-                        {isThisPlaying ? 'pause' : 'play_arrow'}
-                      </span>
+                      {isThisPlaying ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4 ml-0.5" />
+                      )}
                     </button>
                   </div>
                 );
@@ -163,11 +192,11 @@ export const AmbientSoundModal: React.FC<AmbientSoundModalProps> = ({ isOpen, on
           <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#20281F] border border-[#E2E8E0] dark:border-[#2B372A] space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)]">
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base">volume_up</span>
+                <Volume2 className="w-4 h-4" />
                 <span>Âm lượng ({Math.round(volume * 100)}%)</span>
               </span>
               <span className="flex items-center gap-1 text-[#2A4228] dark:text-[#8BA888] text-[11px]">
-                <span className="material-symbols-outlined text-sm">repeat</span>
+                <Repeat className="w-3.5 h-3.5" />
                 <span>Lặp vô tận</span>
               </span>
             </div>

@@ -1,4 +1,26 @@
 import React, { useState } from 'react';
+import { 
+  Compass, 
+  Globe, 
+  Mail, 
+  PlusCircle, 
+  MessageSquare, 
+  User, 
+  GraduationCap, 
+  Headphones, 
+  Brain, 
+  ShieldCheck, 
+  FileEdit, 
+  Music, 
+  Sun, 
+  Moon, 
+  LifeBuoy, 
+  ChevronLeft, 
+  ChevronRight, 
+  Menu, 
+  X,
+  Radio
+} from 'lucide-react';
 import { ActiveTab, School, UserState } from '../types';
 import { loginWithGoogle, logout } from '../lib/firebase';
 import { ReputationBadge } from './ReputationBadge';
@@ -140,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
           title="Khám phá các trường"
         >
-          <span className="material-symbols-outlined text-[20px] text-[#2A4228] dark:text-[#8BA888]">explore</span>
+          <Compass className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
           {!isCollapsed && <span>Khám phá các trường</span>}
         </button>
 
@@ -165,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
           title="Sảnh Chung Công Khai"
         >
-          <span className="material-symbols-outlined text-[20px] text-[#2A4228] dark:text-[#8BA888]">public</span>
+          <Globe className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
           {!isCollapsed && <span>Sảnh Chung Công Khai</span>}
         </button>
 
@@ -179,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
           title="Địa Cầu Kết Nối 3D (Phân bố theo tỉnh thành)"
         >
-          <span className="material-symbols-outlined text-[20px] text-amber-600 dark:text-amber-400 animate-pulse">language</span>
+          <Globe className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
           {!isCollapsed && (
             <div className="flex items-center gap-1.5 justify-between w-full">
               <span>Địa Cầu Kết Nối 3D</span>
@@ -199,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
           title="Hộp thư Campus Hub"
         >
-          <span className="material-symbols-outlined text-[20px] text-[#2A4228] dark:text-[#8BA888]">mark_email_unread</span>
+          <Mail className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
           {!isCollapsed && <span>Hộp thư Campus Hub</span>}
         </button>
 
@@ -227,7 +249,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="text-left text-[11px] py-1.5 px-2 rounded-lg text-[#2A4228] dark:text-[#8BA888] hover:bg-[#EAF0E8]/60 dark:hover:bg-white/5 font-bold flex items-center gap-1 transition-colors"
                 title="Xác thực thẻ HS/SV để thêm trường của bạn"
               >
-                <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                <PlusCircle className="w-3.5 h-3.5" />
                 <span>+ Xác thực trường học</span>
               </button>
             )}
@@ -244,7 +266,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Trò chuyện 1-1"
         >
           <div className="flex items-center gap-3.5">
-            <span className="material-symbols-outlined text-[20px] text-[#2A4228] dark:text-[#8BA888]">chat_bubble</span>
+            <MessageSquare className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
             {!isCollapsed && <span>Trò chuyện 1-1</span>}
           </div>
           {!isCollapsed && (
@@ -264,7 +286,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Hồ sơ & Xác thực"
         >
           <div className="flex items-center gap-3.5">
-            <span className="material-symbols-outlined text-[20px] text-[#2A4228] dark:text-[#8BA888]">account_circle</span>
+            <User className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
             {!isCollapsed && <span>Hồ sơ & Xác thực</span>}
           </div>
           {!isCollapsed && (
@@ -302,7 +324,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-[#2A4228]">school</span>
+                <GraduationCap className="w-4 h-4 text-[#2A4228]" />
                 <span>🎒 Học sinh / Thành viên</span>
               </div>
             </button>
@@ -319,7 +341,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-[#2A4228]">hearing</span>
+                <Headphones className="w-4 h-4 text-[#2A4228]" />
                 <span>🎧 Người lắng nghe</span>
               </div>
             </button>
@@ -336,7 +358,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-[#2A4228]">psychology</span>
+                <Brain className="w-4 h-4 text-[#2A4228]" />
                 <span>🎓 Mentor / Chuyên gia</span>
               </div>
               <span className="text-[9px] bg-[#2A4228]/20 text-[#2A4228] dark:text-[#8BA888] px-1 rounded font-bold">2</span>
@@ -354,7 +376,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-rose-600">admin_panel_settings</span>
+                <ShieldCheck className="w-4 h-4 text-rose-600" />
                 <span>🛡️ Kiểm duyệt AI</span>
               </div>
             </button>
@@ -372,7 +394,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           className={`w-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold py-2.5 px-3 rounded-full text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95`}
           title="Chia sẻ ẩn danh"
         >
-          <span className="material-symbols-outlined text-[18px]">edit_note</span>
+          <FileEdit className="w-4 h-4" />
           {!isCollapsed && <span>Chia sẻ ẩn danh</span>}
         </button>
 
@@ -395,7 +417,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="p-2 rounded-xl text-[#2A4228] dark:text-[#8BA888] hover:bg-[#EAF0E8] dark:hover:bg-[#2A3628] transition-colors flex items-center gap-1.5 text-xs font-bold"
               title="Phát Nhạc An Yên Lặp Vô Tận"
             >
-              <span className="material-symbols-outlined text-[18px]">graphic_eq</span>
+              <Music className="w-4 h-4" />
               {!isCollapsed && <span>Nhạc an yên</span>}
             </button>
           )}
@@ -406,9 +428,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-1.5 text-xs font-bold"
             title="Đổi giao diện Sáng / Tối"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
             {!isCollapsed && <span>{theme === 'dark' ? 'Sáng' : 'Tối'}</span>}
           </button>
 
@@ -421,7 +445,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/25 transition-all"
             title="Tổng đài hỗ trợ khẩn cấp SOS"
           >
-            <span className="material-symbols-outlined text-[16px]">support_agent</span>
+            <LifeBuoy className="w-4 h-4" />
             {!isCollapsed && <span>SOS</span>}
           </button>
         </div>
@@ -462,9 +486,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[#2C382A] dark:text-[#8E9B8A] transition-colors shrink-0"
             title={isDesktopCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn menu'}
           >
-            <span className="material-symbols-outlined text-lg">
-              {isDesktopCollapsed ? 'side_navigation' : 'chevron_left'}
-            </span>
+            {isDesktopCollapsed ? (
+              <ChevronRight className="w-5 h-5" />
+            ) : (
+              <ChevronLeft className="w-5 h-5" />
+            )}
           </button>
         </div>
 
@@ -480,7 +506,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-1.5 rounded-xl bg-[#EAF0E8] dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] text-[#0F180E] dark:text-[#E8ECE6] active:scale-95 transition-transform flex items-center justify-center"
             aria-label="Open sidebar drawer"
           >
-            <span className="material-symbols-outlined text-xl">menu</span>
+            <Menu className="w-5 h-5" />
           </button>
 
           <div 
@@ -503,9 +529,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-1.5 rounded-lg text-[#0F180E] dark:text-[#E8ECE6]"
             title="Đổi giao diện Sáng / Tối"
           >
-            <span className="material-symbols-outlined text-xl">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
           </button>
 
           {/* Emergency button mobile */}
@@ -513,7 +541,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={openEmergency}
             className="px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 shadow-2xs"
           >
-            <span className="material-symbols-outlined text-sm">support_agent</span>
+            <LifeBuoy className="w-3.5 h-3.5" />
             <span>SOS</span>
           </button>
         </div>
@@ -552,7 +580,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="p-1.5 rounded-full bg-[#EAF0E8] dark:bg-[#20281F] text-[#0F180E] dark:text-[#E8ECE6] hover:bg-rose-500/20 hover:text-rose-600 transition-colors"
                 aria-label="Close sidebar drawer"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <X className="w-5 h-5" />
               </button>
             </div>
 

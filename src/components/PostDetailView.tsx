@@ -18,7 +18,16 @@ import {
   X,
   ShieldCheck,
   Globe,
-  School as SchoolIcon
+  School as SchoolIcon,
+  Hourglass,
+  Trash2,
+  Image as ImageIcon,
+  Flame,
+  Lock,
+  Music,
+  Minimize2,
+  Mail,
+  FileEdit
 } from 'lucide-react';
 import { Post, Reply, UserState } from '../types';
 import { ambientAudio } from '../lib/audioSynthesizer';
@@ -80,10 +89,19 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   const [localReplies, setLocalReplies] = useState<Reply[]>(post.replies || []);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
+  const isUserLoggedIn = Boolean(userState?.isLoggedIn || userState?.googleUser?.email);
+
   // Reply Identity Toggle ('anonymous' vs 'identity')
-  const [replyPersonaMode, setReplyPersonaMode] = useState<'anonymous' | 'identity'>(
-    userState?.activePostingMode || 'anonymous'
-  );
+  const [replyPersonaMode, setReplyPersonaMode] = useState<'anonymous' | 'identity'>(() => {
+    if (!isUserLoggedIn) return 'anonymous';
+    return userState?.activePostingMode || 'anonymous';
+  });
+
+  useEffect(() => {
+    if (!isUserLoggedIn) {
+      setReplyPersonaMode('anonymous');
+    }
+  }, [isUserLoggedIn]);
 
   const replyInputRef = useRef<HTMLInputElement>(null);
 
@@ -272,7 +290,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
             onClick={onBack}
             className="flex items-center gap-1.5 text-xs text-[#2C382A] dark:text-[#8E9B8A] hover:text-[#2A4228] dark:hover:text-[#8BA888] font-semibold transition-colors"
           >
-            <span className="material-symbols-outlined text-base">arrow_back</span>
+            <ArrowLeft className="w-4 h-4" />
             <span>Trở về {post.schoolName}</span>
           </button>
 
@@ -283,54 +301,13 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               className="px-3.5 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
               title="Đọc không xao nhãng trong giao diện tĩnh lặng"
             >
-              <span className="material-symbols-outlined text-sm">auto_stories</span>
+              <BookOpen className="w-4 h-4" />
               <span>Chế độ đọc tập trung</span>
             </button>
 
             <span className="text-[10px] uppercase tracking-[0.2em] text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#2A4228]/15 px-3 py-1 rounded-full hidden sm:inline-block">
               Campus Hub
             </span>
-          </div>
-        </div>
-
-        {/* ================= IDENTITY REMINDER BANNER ================= */}
-        <div className={`p-4 rounded-3xl border flex items-start gap-3.5 transition-all shadow-xs ${
-          post.isIdentityPublic
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-            : 'bg-[#2A4228]/10 border-[#2A4228]/25 text-[#182217] dark:text-[#E8ECE6]'
-        }`}>
-          <div className="w-9 h-9 rounded-2xl bg-white dark:bg-[#151C14] flex items-center justify-center shrink-0 border border-black/10 dark:border-white/10 text-lg shadow-2xs">
-            {post.isIdentityPublic ? '👤' : '🎭'}
-          </div>
-          <div className="flex-1 text-xs space-y-1">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <div className="font-bold flex items-center gap-2">
-                <span>
-                  {isAuthor
-                    ? (post.isIdentityPublic ? 'Bạn là tác giả (Đang ở Danh tính chính)' : 'Bạn là tác giả (Đang ở chế độ Ẩn danh)')
-                    : (post.isIdentityPublic ? 'Tác giả công khai danh tính & niên khóa' : 'Lá thư ẩn danh học đường bảo mật 100%')}
-                </span>
-              </div>
-              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
-                post.isIdentityPublic
-                  ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/30'
-                  : 'bg-[#2A4228]/20 text-[#2A4228] dark:text-[#8BA888] border-[#2A4228]/30'
-              }`}>
-                {post.isIdentityPublic ? '✓ Danh tính thật' : '🔒 Ẩn danh an toàn'}
-              </span>
-            </div>
-
-            <p className="opacity-90 leading-relaxed text-[11px]">
-              {isAuthor ? (
-                post.isIdentityPublic
-                  ? `Lá thư này hiển thị tên "${post.authorDisplayName || userDisplayName}", avatar và niên khóa "${post.authorCohort || 'Đã xác thực'}" của bạn đến mọi người.`
-                  : `Lá thư này được ẩn danh hoàn toàn dưới mã "${post.authorAnonId}". Tên thật, avatar cá nhân và niên khóa của bạn không ai nhìn thấy.`
-              ) : (
-                post.isIdentityPublic
-                  ? `Tác giả chia sẻ công khai với tên "${post.authorDisplayName || post.authorAnonId}" ${post.authorCohort ? `(${post.authorCohort})` : ''} nhằm kết nối & trao đổi kinh nghiệm học tập.`
-                  : `Tác giả giấu tên để giải tỏa nỗi lòng. Mọi danh tính cá nhân đều được hệ thống mã hóa bảo vệ.`
-              )}
-            </p>
           </div>
         </div>
 
@@ -366,7 +343,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
                   {post.isIdentityPublic && (
                     <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">badge</span>
+                      <BadgeCheck className="w-3 h-3" />
                       <span>Danh tính chính</span>
                     </span>
                   )}
@@ -400,7 +377,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                       className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"
                       title="Lá thư tâm sự ẩn danh có thời hạn tự hủy để bảo vệ quyền riêng tư"
                     >
-                      <span className="material-symbols-outlined text-xs">hourglass_top</span>
+                      <Hourglass className="w-3 h-3" />
                       <span>
                         {(() => {
                           const diffMs = post.expiresAt - Date.now();
@@ -441,7 +418,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                       onClick={() => onEditPost(post)}
                       className="px-3 py-1 rounded-xl bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-[#2A4228]/20 text-[#2A4228] dark:text-[#8BA888] border border-[#C8D2C4] dark:border-[#3A4738] text-xs font-bold flex items-center gap-1 transition-all"
                     >
-                      <span className="material-symbols-outlined text-sm">edit</span>
+                      <FileEdit className="w-3.5 h-3.5" />
                       <span>Chỉnh sửa</span>
                     </button>
                   )}
@@ -450,7 +427,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                       onClick={() => onDeletePost(post.id)}
                       className="px-3 py-1 rounded-xl bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-rose-500/20 text-rose-600 border border-rose-200 dark:border-rose-900/50 text-xs font-bold flex items-center gap-1 transition-all"
                     >
-                      <span className="material-symbols-outlined text-sm">delete</span>
+                      <Trash2 className="w-3.5 h-3.5" />
                       <span>Xóa</span>
                     </button>
                   )}
@@ -471,7 +448,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
             {post.imageUrl && (
               <div className="mt-4 rounded-2xl border border-[#C8D2C4] dark:border-[#3A4738] bg-[#FAF9F6] dark:bg-[#20281F] p-4 space-y-3">
                 <div className="font-bold text-xs text-[#0F180E] dark:text-[#E8ECE6] flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base text-[#2A4228]">image</span>
+                  <ImageIcon className="w-4 h-4 text-[#2A4228]" />
                   <span>Hình ảnh đính kèm theo lá thư</span>
                 </div>
                 <img
@@ -483,7 +460,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 {post.imageAnalysis && (
                   <div className="p-3.5 rounded-xl bg-[#8BA888]/15 border border-[#8BA888]/30 space-y-2 text-xs">
                     <div className="flex items-center gap-1.5 font-bold text-[#2A4228] dark:text-[#8BA888]">
-                      <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span>Phân tích nét vẽ & cảm xúc qua Gemini AI:</span>
                     </div>
                     <p className="text-[#182217] dark:text-[#E8ECE6]"><strong>Tóm tắt:</strong> {post.imageAnalysis.summary}</p>
@@ -555,49 +532,14 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 onClick={() => onConnectWithAuthor(post)}
                 className="px-4 py-2 rounded-full bg-[#FAF9F6] dark:bg-[#20281F] hover:bg-[#EAF0E8] text-[#2A4228] dark:text-[#8BA888] border border-[#2A4228]/40 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
               >
-                <span className="material-symbols-outlined text-sm">forum</span>
+                <MessageSquare className="w-3.5 h-3.5" />
                 <span>Nhắn tin 1:1 ẩn danh với tác giả</span>
               </button>
             )}
           </div>
         </article>
 
-        {/* AI Mentor Lantern Assistant Section */}
-        {onRequestAIReply && (
-          <div className="p-4 rounded-3xl bg-gradient-to-br from-[#2A4228]/10 via-[#8BA888]/10 to-transparent border border-[#2A4228]/20 flex items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#2A4228] text-white flex items-center justify-center shadow-xs">
-                <span className="material-symbols-outlined text-xl">candle</span>
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6]">
-                  Cần một lời khuyên thấu hiểu từ Ngọn Đèn AI?
-                </h3>
-                <p className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
-                  AI được huấn luyện bằng tâm lý học đường, luôn lắng nghe không phán xét
-                </p>
-              </div>
-            </div>
 
-            <button
-              onClick={handleGenerateAIReply}
-              disabled={isGeneratingAI}
-              className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 transition-all shrink-0"
-            >
-              {isGeneratingAI ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  <span>Đang thắp sáng...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Thắp đèn an ủi</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
 
         {/* Replies List Header */}
         <div className="flex items-center justify-between px-2 pt-2">
@@ -638,7 +580,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                     <div className="flex items-center gap-2.5">
                       {isAIReply ? (
                         <div className="w-8 h-8 rounded-full bg-[#2A4228] text-white flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-sm">candle</span>
+                          <Flame className="w-4 h-4" />
                         </div>
                       ) : reply.isIdentityPublic && reply.authorAvatar ? (
                         <img
@@ -754,17 +696,13 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               </button>
               
               {(!userState?.isLoggedIn || !userState?.googleUser?.email) ? (
-                onOpenLogin && (
-                  <button
-                    type="button"
-                    onClick={onOpenLogin}
-                    className="px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 bg-[#FAF9F6] dark:bg-[#20281F] text-[#5A6D58] dark:text-[#8E9B8A] border border-[#DCE4D8] dark:border-[#3A4738] hover:text-[#2A4228] transition-all"
-                    title="Đăng nhập Gmail để mở khóa chế độ bình luận bằng danh tính thật"
-                  >
-                    <span className="material-symbols-outlined text-xs text-amber-600">lock</span>
-                    <span className="text-[10px]">Đăng nhập Gmail để hiện danh tính</span>
-                  </button>
-                )
+                <span 
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 bg-[#FAF9F6] dark:bg-[#20281F] text-[#8E9B8A] border border-[#DCE4D8] dark:border-[#3A4738] opacity-75"
+                  title="Chế độ bình luận bằng danh tính chỉ khả dụng sau khi đăng nhập"
+                >
+                  <Lock className="w-2.5 h-2.5 text-amber-600" />
+                  <span>Hiện danh tính (Cần đăng nhập)</span>
+                </span>
               ) : !isIdentityLockedForSchool ? (
                 <button
                   type="button"
@@ -774,7 +712,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   className="px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-all"
                   title="Nhấn để thiết lập & khóa danh tính tại Hồ sơ"
                 >
-                  <span className="material-symbols-outlined text-xs text-amber-600">lock</span>
+                  <Lock className="w-3 h-3 text-amber-600" />
                   <span className="text-[10px]">Chưa khóa danh tính (Cần khóa để hiện tên)</span>
                 </button>
               ) : (
@@ -809,7 +747,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
           {replyingTo && (
             <div className="mb-2 flex items-center justify-between px-4 py-1.5 rounded-full bg-[#2A4228] text-white text-xs font-bold shadow-md animate-fade-in max-w-fit mx-auto border border-white/20">
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm">reply</span>
+                <CornerDownRight className="w-3.5 h-3.5" />
                 <span>Đang trả lời <strong>@{replyingTo.authorName}</strong></span>
               </span>
               <button
@@ -818,7 +756,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 className="ml-2.5 hover:bg-white/20 rounded-full p-0.5 transition-colors"
                 title="Hủy trả lời"
               >
-                <span className="material-symbols-outlined text-xs block">close</span>
+                <X className="w-3 h-3" />
               </button>
             </div>
           )}
@@ -830,10 +768,10 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
             <div className="w-8 h-8 rounded-full bg-[#2A4228]/20 flex items-center justify-center text-[#2A4228] dark:text-[#8BA888] shrink-0 ml-1">
               {replyPersonaMode === 'identity' ? (
                 <img src={userAvatar} alt="" className="w-full h-full rounded-full object-cover" />
+              ) : replyingTo ? (
+                <CornerDownRight className="w-4 h-4" />
               ) : (
-                <span className="material-symbols-outlined text-lg">
-                  {replyingTo ? 'reply' : 'edit'}
-                </span>
+                <FileEdit className="w-4 h-4" />
               )}
             </div>
 
@@ -857,7 +795,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               disabled={!replyInput.trim()}
               className="w-9 h-9 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all active:scale-90 shadow-sm"
             >
-              <span className="material-symbols-outlined text-lg">send</span>
+              <Send className="w-4 h-4" />
             </button>
           </form>
         </div>
@@ -954,7 +892,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 }`}
                 title="Chọn & Lặp giai điệu an yên"
               >
-                <span className="material-symbols-outlined text-base">graphic_eq</span>
+                <Music className="w-4 h-4" />
                 <span className="hidden sm:inline">
                   {ambientAudio.isPlaying() || isAmbientPlaying ? 'Đang phát Nhạc An Yên 🔄' : 'Giai điệu an yên'}
                 </span>
@@ -969,7 +907,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 className="px-3.5 py-1.5 rounded-full bg-rose-500/20 text-rose-700 hover:bg-rose-500 hover:text-white font-bold text-xs flex items-center gap-1 transition-colors"
                 title="Thoát chế độ tập trung"
               >
-                <span className="material-symbols-outlined text-base">fullscreen_exit</span>
+                <Minimize2 className="w-4 h-4" />
                 <span>Thoát</span>
               </button>
             </div>
@@ -981,7 +919,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               {/* Author Info & Tag */}
               <div className="flex items-center justify-between gap-3 mb-6 border-b pb-4 border-black/10 dark:border-white/10">
                 <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-2xl text-[#2A4228]">mail</span>
+                  <Mail className="w-6 h-6 text-[#2A4228]" />
                   <div>
                     <h4 className={`font-bold text-sm ${activeTheme.textPrimary}`}>
                       {post.isIdentityPublic ? (post.authorDisplayName || post.authorAnonId) : post.authorAnonId} • {post.schoolName}

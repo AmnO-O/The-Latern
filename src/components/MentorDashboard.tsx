@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { Post } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 
@@ -197,7 +198,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     <img src={post.imageUrl} alt="Attachment" className="w-20 h-20 object-cover rounded-lg shrink-0 border" />
                     <div className="text-xs text-[#5A6E58] dark:text-[#8BA888] space-y-1">
                       <div className="font-bold flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                        <Sparkles className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
                         Gemini Phân tích ảnh
                       </div>
                       {post.imageAnalysis?.summary && <p><strong>Tóm tắt:</strong> {post.imageAnalysis.summary}</p>}
