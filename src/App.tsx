@@ -1538,7 +1538,16 @@ export default function App() {
         schools={schools}
         defaultSchool={selectedSchool}
         isLoggedIn={userState.isLoggedIn}
+        userState={userState}
         onOpenLogin={handleGoogleSignIn}
+        onOpenProfile={() => {
+          setIsComposerOpen(false);
+          setActiveTab('profile');
+        }}
+        onOpenVerify={() => {
+          setIsComposerOpen(false);
+          setIsVerifyOpen(true);
+        }}
         onSubmitPost={handleCreatePost}
       />
 

@@ -43,7 +43,8 @@ interface PostDetailViewProps {
       isIdentityPublic?: boolean; 
       authorDisplayName?: string; 
       authorAvatar?: string; 
-      authorCohort?: string 
+      authorCohort?: string;
+      authorMajor?: string;
     }
   ) => void;
   onRequestAIReply?: (postId: string) => void;
@@ -161,12 +162,16 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
     userState?.defaultCohort;
   const effectiveMajor = userState?.schoolVerifications?.[post.schoolId]?.major || 
     userState?.verifiedMajor;
+  const isIdentityLockedForSchool = Boolean(
+    userState?.isIdentityLocked || 
+    userState?.schoolVerifications?.[post.schoolId]?.isIdentityLocked
+  );
 
   const handleSubmitReply = (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyInput.trim()) return;
 
-    const isPublic = replyPersonaMode === 'identity';
+    const isPublic = replyPersonaMode === 'identity' && isIdentityLockedForSchool;
     onAddReply(
       post.id, 
       replyInput.trim(), 
@@ -760,6 +765,18 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                     <span className="text-[10px]">Đăng nhập Gmail để hiện danh tính</span>
                   </button>
                 )
+              ) : !isIdentityLockedForSchool ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenProfile) onOpenProfile();
+                  }}
+                  className="px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-all"
+                  title="Nhấn để thiết lập & khóa danh tính tại Hồ sơ"
+                >
+                  <span className="material-symbols-outlined text-xs text-amber-600">lock</span>
+                  <span className="text-[10px]">Chưa khóa danh tính (Cần khóa để hiện tên)</span>
+                </button>
               ) : (
                 <button
                   type="button"

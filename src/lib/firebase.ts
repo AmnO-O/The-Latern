@@ -111,7 +111,6 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     return user;
   } catch (err: any) {
     const errorCode = err?.code || '';
-    // Handle standard user cancellations and popup closures gracefully without treating them as fatal errors
     if (
       errorCode === 'auth/user-cancelled' ||
       errorCode === 'auth/popup-closed-by-user' ||

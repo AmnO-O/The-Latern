@@ -12,6 +12,7 @@ interface ComposerModalProps {
   userState?: UserState;
   onOpenLogin?: () => void;
   onOpenProfile?: () => void;
+  onOpenVerify?: () => void;
   onSubmitPost: (postData: {
     title: string;
     content: string;
@@ -30,6 +31,7 @@ interface ComposerModalProps {
     authorDisplayName?: string;
     authorAvatarUrl?: string;
     authorCohort?: string;
+    authorMajor?: string;
   }) => Promise<{ isSafe: boolean; flagReason?: string; suggestion?: string; crisisDetected?: boolean }>;
 }
 
@@ -56,6 +58,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
   userState,
   onOpenLogin,
   onOpenProfile,
+  onOpenVerify,
   onSubmitPost
 }) => {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>(
@@ -72,16 +75,20 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
     userState?.activePostingMode || 'anonymous'
   );
 
-  // Identity Customization State (for public identity mode)
-  const isLocked = !!(userState?.isIdentityLocked || (userState?.verificationStatus === 'verified' && userState?.verifiedFullName));
-  const lockedName = userState?.verifiedFullName || userState?.displayName || userState?.googleUser?.displayName || 'Học sinh / Sinh viên';
-  const [displayName, setDisplayName] = useState(lockedName);
+  // Per-School Verification & Identity Info
+  const currentSchoolObj = schools.find(s => s.id === selectedSchoolId) || defaultSchool;
+  const currentVerification = userState?.schoolVerifications?.[selectedSchoolId];
+  const isSchoolVerified = !!currentVerification;
+  const isLocked = !!(userState?.isIdentityLocked || currentVerification?.isIdentityLocked || (userState?.verificationStatus === 'verified' && userState?.verifiedFullName));
+  
+  // Real Name is unified across all schools
+  const unifiedRealName = userState?.verifiedFullName || userState?.displayName || userState?.googleUser?.displayName || 'Học sinh / Sinh viên';
+  const [displayName, setDisplayName] = useState(unifiedRealName);
   const [avatarUrl, setAvatarUrl] = useState(getEffectiveAvatar(userState?.customAvatarUrl, userState?.googleUser?.photoURL));
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
-  // Determine school cohort for selected school
-  const currentSchoolObj = schools.find(s => s.id === selectedSchoolId) || defaultSchool;
-  const currentVerification = userState?.schoolVerifications?.[selectedSchoolId];
+  // Per-school major & cohort
+  const schoolMajor = currentVerification?.major || userState?.verifiedMajor || (currentSchoolObj?.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin');
   const initialCohort = currentVerification?.cohort || 
     userState?.schoolCohorts?.[selectedSchoolId] || 
     userState?.verifiedCohort || 
@@ -90,7 +97,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
   
   const [cohortInput, setCohortInput] = useState(initialCohort);
 
-  // Update cohort if selected school changes
+  // Update major & cohort when selected school changes
   useEffect(() => {
     if (userState?.schoolVerifications?.[selectedSchoolId]?.cohort) {
       setCohortInput(userState.schoolVerifications[selectedSchoolId].cohort!);
@@ -104,10 +111,10 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
   }, [selectedSchoolId, userState]);
 
   useEffect(() => {
-    if (isLocked && lockedName) {
-      setDisplayName(lockedName);
+    if (unifiedRealName) {
+      setDisplayName(unifiedRealName);
     }
-  }, [isLocked, lockedName]);
+  }, [unifiedRealName]);
 
   // Expiry duration state (in days, 0 = permanent)
   const [expiryDays, setExpiryDays] = useState<number>(isLoggedIn ? 0 : 14);
@@ -225,6 +232,15 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
 
     const currentMajor = userState?.schoolVerifications?.[schoolObj.id]?.major || userState?.verifiedMajor;
 
+    if (isIdentityPublic && !isLocked) {
+      setIsSubmitting(false);
+      setModerationFeedback({
+        flagReason: 'Bạn cần khóa danh tính học đường trước khi đăng bài ở chế độ Danh tính chính để bảo đảm tính chuẩn xác và chống giả mạo trong trường.',
+        suggestion: 'Hãy nhấn vào Cài đặt Hồ sơ để Khóa danh tính (1 lần duy nhất) hoặc Quét Thẻ AI.'
+      });
+      return;
+    }
+
     const result = await onSubmitPost({
       title: title.trim(),
       content: content.trim(),
@@ -232,7 +248,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
       schoolName: schoolObj.name,
       schoolSlug: schoolObj.slug,
       tags: selectedTags,
-      authorAnonId: isIdentityPublic ? (displayName.trim() || lockedName) : getComputedAnonId(),
+      authorAnonId: isIdentityPublic ? (unifiedRealName || displayName.trim()) : getComputedAnonId(),
       authorClassBadge: !isIdentityPublic && classBadge !== 'Ẩn hoàn toàn' ? classBadge : undefined,
       isPublic,
       imageUrl: imagePreview || undefined,
@@ -240,10 +256,10 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
       expiryDurationDays: expiryDays,
       isAnonymousGuest: !isLoggedIn,
       isIdentityPublic: isIdentityPublic,
-      authorDisplayName: isIdentityPublic ? (displayName.trim() || lockedName) : undefined,
+      authorDisplayName: isIdentityPublic ? (unifiedRealName || displayName.trim()) : undefined,
       authorAvatarUrl: isIdentityPublic ? avatarUrl : undefined,
-      authorCohort: isIdentityPublic ? (cohortInput.trim() || undefined) : undefined,
-      authorMajor: isIdentityPublic ? (currentMajor || undefined) : undefined
+      authorCohort: isIdentityPublic ? (cohortInput.trim() || initialCohort) : undefined,
+      authorMajor: isIdentityPublic ? (schoolMajor || currentMajor || undefined) : undefined
     });
 
     setIsSubmitting(false);
@@ -570,10 +586,50 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                  <span className="material-symbols-outlined text-xs">verified</span>
-                  <span>Lá thư sẽ xuất hiện với uy tín chính thức kèm huy hiệu trường và niên khóa của bạn.</span>
-                </div>
+                {!isLocked ? (
+                  <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-xs space-y-2 text-amber-900 dark:text-amber-200">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                      <span className="material-symbols-outlined text-sm">lock_clock</span>
+                      <span>Danh tính chưa được khóa chính thức</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      Để bảo vệ uy tín học đường và chống mạo danh, bạn cần hoàn tất & khóa danh tính cố định trước khi đăng bài bằng Danh tính chính.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      {onOpenProfile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenProfile();
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#2A4228] text-white text-[11px] font-bold hover:bg-[#1E301D] transition-colors flex items-center gap-1 shadow-xs"
+                        >
+                          <span className="material-symbols-outlined text-xs">manage_accounts</span>
+                          <span>Đến Cài đặt để Khóa danh tính</span>
+                        </button>
+                      )}
+                      {onOpenVerify && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenVerify();
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#20281F] border border-amber-500/40 text-amber-900 dark:text-amber-200 text-[11px] font-bold hover:bg-amber-500/10 transition-colors flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-xs">document_scanner</span>
+                          <span>Quét Thẻ AI</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                    <span className="material-symbols-outlined text-xs">verified</span>
+                    <span>Lá thư sẽ xuất hiện với danh tính đã khóa: <strong>{unifiedRealName}</strong> ({schoolMajor} • {cohortInput}).</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

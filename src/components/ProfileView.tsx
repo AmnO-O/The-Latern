@@ -12,7 +12,6 @@ interface ProfileViewProps {
   setActiveTab?: (tab: any) => void;
   savedPosts: Post[];
   onOpenVerify: () => void;
-  onOpenLogin?: () => void;
   onRemoveSchoolVerification?: (schoolId: string) => void;
   onResetAllVerifications?: () => void;
   onSelectPost: (post: Post) => void;
@@ -29,7 +28,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   setActiveTab,
   savedPosts,
   onOpenVerify,
-  onOpenLogin,
   onRemoveSchoolVerification,
   onResetAllVerifications,
   onSelectPost,
@@ -45,16 +43,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [customAvatarUrlInput, setCustomAvatarUrlInput] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  // Manual Identity Input State
+  // Manual Identity Input State & Per-School Editing States
   const [manualFullName, setManualFullName] = useState(
     userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || ''
   );
-  const [manualMajor, setManualMajor] = useState(
-    userState.verifiedMajor || (userState.selectedSchool?.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin')
-  );
-  const [manualCohort, setManualCohort] = useState(
-    userState.verifiedCohort || userState.defaultCohort || (userState.selectedSchool?.type === 'university' ? 'K22 (2022 - 2026)' : 'K21-24')
-  );
+  
+  // State for editing per-school major and cohort
+  const [schoolFormStates, setSchoolFormStates] = useState<{
+    [schoolId: string]: { major: string; cohort: string };
+  }>({});
+
+  const [activeTargetSchoolForLock, setActiveTargetSchoolForLock] = useState<{
+    id: string;
+    name: string;
+    type?: string;
+    major: string;
+    cohort: string;
+  } | null>(null);
+
   const [showLockConfirmModal, setShowLockConfirmModal] = useState(false);
   const [lockCommitAgreed, setLockCommitAgreed] = useState(false);
   const [lockValidationError, setLockValidationError] = useState<string | null>(null);
@@ -67,7 +73,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const rankProgress = getNextRankProgress(reputationScore);
 
   const effectiveAvatar = getEffectiveAvatar(userState.customAvatarUrl, userState.googleUser?.photoURL);
-  const effectiveDisplayName = userState.displayName || userState.googleUser?.displayName || `Người dùng #${userState.userAnonNumber}`;
+  const effectiveDisplayName = userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || `Người dùng #${userState.userAnonNumber}`;
   const effectiveCohort = userState.defaultCohort || 'Sinh viên K22';
 
   const showSaveNotification = (msg: string) => {
@@ -76,9 +82,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const handleUpdateDisplayName = (name: string) => {
-    if (!setUserState) return;
+    if (!setUserState || userState.isIdentityLocked) return;
     setUserState(prev => {
-      const updated = { ...prev, displayName: name };
+      const updated = { ...prev, displayName: name, verifiedFullName: name };
       try {
         localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
       } catch (e) {}
@@ -111,76 +117,110 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleUpdateDefaultCohort = (cohort: string) => {
-    if (!setUserState) return;
-    setUserState(prev => {
-      const updated = { ...prev, defaultCohort: cohort };
-      try {
-        localStorage.setItem('the_lantern_user_state', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
+  const handleUpdateSchoolFormField = (schoolId: string, field: 'major' | 'cohort', value: string) => {
+    setSchoolFormStates(prev => {
+      const current = prev[schoolId] || {
+        major: userState.schoolVerifications?.[schoolId]?.major || userState.verifiedMajor || 'Chuyên Tin',
+        cohort: userState.schoolVerifications?.[schoolId]?.cohort || userState.schoolCohorts?.[schoolId] || userState.verifiedCohort || 'K21-24'
+      };
+      return {
+        ...prev,
+        [schoolId]: {
+          ...current,
+          [field]: value
+        }
+      };
     });
   };
 
-  // One-time identity locking handler
-  const handleInitiateLockIdentity = () => {
+  // Initiate locking identity for a specific school
+  const handleInitiateLockForSchool = (school: { id: string; name: string; type?: string }, initialMajor?: string, initialCohort?: string) => {
     setLockValidationError(null);
-    if (!manualFullName.trim()) {
-      setLockValidationError('Vui lòng nhập đầy đủ Họ và tên thật.');
+    const unifiedName = userState.isIdentityLocked
+      ? (userState.verifiedFullName || userState.displayName || '')
+      : manualFullName.trim();
+
+    if (!unifiedName) {
+      setLockValidationError('Vui lòng nhập đầy đủ Họ và tên thật thống nhất của bạn.');
       return;
     }
-    if (!manualMajor.trim()) {
-      setLockValidationError('Vui lòng nhập Chuyên ngành hoặc Lớp gốc (VD: Chuyên Tin, Lớp A1, CNTT...).');
+
+    const currentMajor = (schoolFormStates[school.id]?.major || initialMajor || userState.schoolVerifications?.[school.id]?.major || userState.verifiedMajor || (school.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin')).trim();
+    const currentCohort = (schoolFormStates[school.id]?.cohort || initialCohort || userState.schoolVerifications?.[school.id]?.cohort || userState.schoolCohorts?.[school.id] || userState.verifiedCohort || 'K21-24').trim();
+
+    if (!currentMajor) {
+      setLockValidationError(`Vui lòng nhập Chuyên ngành hoặc Lớp gốc cho trường ${school.name}.`);
       return;
     }
-    if (!manualCohort.trim()) {
-      setLockValidationError('Vui lòng nhập Niên khóa/Khóa học (VD: K21-24, K22, Khóa 2021-2024...).');
+    if (!currentCohort) {
+      setLockValidationError(`Vui lòng nhập Niên khóa cho trường ${school.name}.`);
       return;
     }
+
+    setActiveTargetSchoolForLock({
+      id: school.id,
+      name: school.name,
+      type: school.type,
+      major: currentMajor,
+      cohort: currentCohort
+    });
     setLockCommitAgreed(false);
     setShowLockConfirmModal(true);
   };
 
   const handleConfirmPermanentLock = () => {
-    if (!lockCommitAgreed || !setUserState) return;
+    if (!lockCommitAgreed || !setUserState || !activeTargetSchoolForLock) return;
 
-    const trimmedName = manualFullName.trim();
-    const trimmedMajor = manualMajor.trim();
-    const trimmedCohort = manualCohort.trim();
-    const currentSchool = userState.selectedSchool;
+    const trimmedName = (userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName).trim();
+    const targetSchool = activeTargetSchoolForLock;
 
     setUserState(prev => {
       const updatedSchoolVerifications = { ...(prev.schoolVerifications || {}) };
-      if (currentSchool && currentSchool.id) {
-        updatedSchoolVerifications[currentSchool.id] = {
-          schoolId: currentSchool.id,
-          schoolName: currentSchool.name,
-          schoolType: currentSchool.type,
-          verifiedAt: Date.now(),
-          method: 'gemini_ocr',
-          role: 'student',
-          studentName: trimmedName,
-          major: trimmedMajor,
-          cohort: trimmedCohort,
-          isIdentityLocked: true
-        };
-      }
+      updatedSchoolVerifications[targetSchool.id] = {
+        schoolId: targetSchool.id,
+        schoolName: targetSchool.name,
+        schoolType: targetSchool.type as any || 'highschool',
+        verifiedAt: updatedSchoolVerifications[targetSchool.id]?.verifiedAt || Date.now(),
+        method: updatedSchoolVerifications[targetSchool.id]?.method || 'gemini_ocr',
+        role: 'student',
+        studentName: trimmedName,
+        major: targetSchool.major,
+        cohort: targetSchool.cohort,
+        isIdentityLocked: true
+      };
 
       const updatedCohorts = {
         ...(prev.schoolCohorts || {}),
-        ...(currentSchool?.id ? { [currentSchool.id]: trimmedCohort } : {})
+        [targetSchool.id]: targetSchool.cohort
       };
+
+      // Ensure target school is in verifiedSchools
+      let updatedVerifiedSchools = [...(prev.verifiedSchools || [])];
+      if (!updatedVerifiedSchools.some(s => s.id === targetSchool.id)) {
+        updatedVerifiedSchools.push({
+          id: targetSchool.id,
+          name: targetSchool.name,
+          slug: targetSchool.id,
+          type: (targetSchool.type as any) || 'highschool',
+          location: 'Việt Nam',
+          studentCount: 1500,
+          lanternCount: 1,
+          isVerified: true
+        });
+      }
 
       const updatedState: UserState = {
         ...prev,
         displayName: trimmedName,
         verifiedFullName: trimmedName,
-        verifiedMajor: trimmedMajor,
-        verifiedCohort: trimmedCohort,
-        defaultCohort: trimmedCohort,
+        verifiedMajor: targetSchool.major,
+        verifiedCohort: targetSchool.cohort,
+        defaultCohort: targetSchool.cohort,
         schoolCohorts: updatedCohorts,
         schoolVerifications: updatedSchoolVerifications,
-        isIdentityLocked: true
+        verifiedSchools: updatedVerifiedSchools,
+        isIdentityLocked: true,
+        verificationStatus: 'verified'
       };
 
       try {
@@ -191,7 +231,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     });
 
     setShowLockConfirmModal(false);
-    showSaveNotification('🔒 Danh tính học đường của bạn đã được khóa vĩnh viễn thành công!');
+    setActiveTargetSchoolForLock(null);
+    showSaveNotification(`🔒 Danh tính trường ${targetSchool.name} đã được khóa vĩnh viễn thành công!`);
   };
 
   const handleUpdateSchoolCohort = (schoolId: string, cohort: string) => {
@@ -456,11 +497,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300">
-                  <span>Danh tính Học đường Đã Xác Thực & Khóa Chống Sửa Đổi 🔒</span>
+                  <span>Danh tính Học đường Đã Khóa Chống Sửa Đổi 🔒</span>
                   <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-600/20 font-extrabold uppercase">Đã Khóa</span>
                 </div>
                 <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 leading-relaxed">
-                  Họ tên thật, chuyên ngành và niên khóa của bạn đã được khóa cố định trên hệ thống để bảo đảm tính chuẩn xác và chống giả mạo trong trường. Bạn có thể tự do đổi Avatar hoặc chuyển sang chế độ <strong>Ẩn danh 100%</strong> bất cứ lúc nào.
+                  Họ tên thật của bạn là thống nhất trên toàn hệ thống. Chuyên ngành và niên khóa được lưu tương ứng theo từng trường học mà bạn xác thực. Bạn có thể tự do đổi Avatar hoặc chuyển sang chế độ <strong>Ẩn danh 100%</strong> bất cứ lúc nào.
                 </p>
               </div>
             </div>
@@ -471,231 +512,219 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="space-y-1 text-left">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800 dark:text-amber-300">
-                  <span>Tự thiết lập danh tính học đường (Lưu 1 lần duy nhất)</span>
+                  <span>Thiết lập danh tính học đường theo từng trường</span>
                 </div>
                 <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
-                  Bạn có thể tự điền Họ tên, Chuyên ngành/Lớp gốc và Niên khóa bên dưới rồi nhấn Lưu & Khóa, hoặc <button onClick={onOpenVerify} className="font-bold underline text-amber-800 dark:text-amber-200">Quét Thẻ AI</button> để tự động nhận diện.
+                  Điền Họ tên thật thống nhất bên dưới và thiết lập Chuyên ngành / Niên khóa tương ứng cho từng trường bạn theo học, hoặc <button onClick={onOpenVerify} className="font-bold underline text-amber-800 dark:text-amber-200">Quét Thẻ AI</button> để tự động nhận diện.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Display Name, Major & Cohort Credentials Card */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-            {/* Real Full Name */}
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1 flex items-center justify-between">
-                <span>Họ và tên thật</span>
-                {userState.isIdentityLocked ? (
-                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                    <span>🔒 Đã khóa</span>
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold">
-                    Tự điền
-                  </span>
-                )}
+          {/* Global Unified Real Full Name Card */}
+          <div className="p-4 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] text-left space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A]">
+                Họ và tên thật (Thống nhất cho mọi trường học)
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName}
-                  readOnly={userState.isIdentityLocked}
-                  disabled={userState.isIdentityLocked}
-                  onChange={(e) => setManualFullName(e.target.value)}
-                  placeholder="VD: Nguyễn Hoàng Nam..."
-                  className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
-                    userState.isIdentityLocked
-                      ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#182217] dark:text-[#E8ECE6] cursor-not-allowed select-all'
-                      : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#182217] dark:text-[#E8ECE6] focus:outline-none focus:border-[#2A4228]'
-                  }`}
-                />
-                {userState.isIdentityLocked && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400" title="Đã khóa chống sửa đổi">
-                    ✓
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Major / Field of Study */}
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1 flex items-center justify-between">
-                <span>Chuyên ngành / Lớp gốc</span>
-                {userState.isIdentityLocked ? (
-                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                    <span>🔒 Đã khóa</span>
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold">
-                    Tự điền
-                  </span>
-                )}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userState.isIdentityLocked ? (userState.verifiedMajor || 'Chuyên Tin') : manualMajor}
-                  readOnly={userState.isIdentityLocked}
-                  disabled={userState.isIdentityLocked}
-                  onChange={(e) => setManualMajor(e.target.value)}
-                  placeholder="VD: Chuyên Tin, Lớp A1, CNTT..."
-                  className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
-                    userState.isIdentityLocked
-                      ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed select-all'
-                      : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
-                  }`}
-                />
-                {userState.isIdentityLocked && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">
-                    ✓
-                  </span>
-                )}
-              </div>
-              {!userState.isIdentityLocked && (
-                <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] mt-1 italic">
-                  *Không ghi Lớp 10/11/12 vì sẽ thay đổi theo năm
-                </p>
+              {userState.isIdentityLocked ? (
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                  <span>🔒 Đã khóa vĩnh viễn</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">
+                  Duy nhất & Không đổi giữa các trường
+                </span>
               )}
             </div>
 
-            {/* Cohort / Class */}
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1 flex items-center justify-between">
-                <span>Khóa / Niên khóa</span>
-                {userState.isIdentityLocked ? (
-                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                    <span>🔒 Đã khóa</span>
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold">
-                    Tự điền
-                  </span>
-                )}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userState.isIdentityLocked ? (userState.verifiedCohort || userState.defaultCohort || 'K21-24') : manualCohort}
-                  readOnly={userState.isIdentityLocked}
-                  disabled={userState.isIdentityLocked}
-                  onChange={(e) => setManualCohort(e.target.value)}
-                  placeholder="VD: K21-24, K22 (2022-2026)..."
-                  className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
-                    userState.isIdentityLocked
-                      ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed select-all'
-                      : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
-                  }`}
-                />
-                {userState.isIdentityLocked && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">
-                    ✓
-                  </span>
-                )}
-              </div>
-              {!userState.isIdentityLocked && (
-                <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] mt-1 italic">
-                  *VD: K21-24, K22, Khóa 2021-2024
-                </p>
+            <div className="relative">
+              <input
+                type="text"
+                value={userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName}
+                readOnly={userState.isIdentityLocked}
+                disabled={userState.isIdentityLocked}
+                onChange={(e) => setManualFullName(e.target.value)}
+                placeholder="VD: Nguyễn Hoàng Nam..."
+                className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
+                  userState.isIdentityLocked
+                    ? 'bg-[#2A4228]/5 dark:bg-[#151C14] border-[#8BA888]/40 text-[#182217] dark:text-[#E8ECE6] cursor-not-allowed select-all'
+                    : 'bg-white dark:bg-[#151C14] border-[#C8D2C4] dark:border-[#3A4738] text-[#182217] dark:text-[#E8ECE6] focus:outline-none focus:border-[#2A4228]'
+                }`}
+              />
+              {userState.isIdentityLocked && (
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400" title="Đã khóa chống sửa đổi">
+                  ✓
+                </span>
               )}
             </div>
+            <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] italic">
+              *Họ tên thật chính xác theo giấy tờ hoặc thẻ sinh viên/học sinh để đảm bảo tính xác thực 100%.
+            </p>
           </div>
 
-          {/* If NOT Locked: Provide Action Button to Save & Lock Once */}
-          {!userState.isIdentityLocked && (
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#2A4228]/5 dark:bg-[#1E271D] p-3.5 rounded-2xl border border-[#2A4228]/20">
-              <div className="text-left space-y-0.5">
-                <div className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
-                  <span>⚠️ Lưu ý quan trọng trước khi lưu</span>
-                </div>
-                <p className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
-                  Thông tin danh tính chỉ được lưu <strong>DUY NHẤT 1 LẦN</strong> và sẽ được <strong>KHÓA VĨNH VIỄN</strong>.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleInitiateLockIdentity}
-                className="w-full sm:w-auto shrink-0 px-4 py-2 rounded-xl bg-[#2A4228] text-white text-xs font-bold shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-sm">lock</span>
-                <span>Lưu & Khóa Danh Tính (1 Lần Duy Nhất)</span>
-              </button>
-            </div>
-          )}
-
-          {/* Verified Schools List & Per-School Locked Info */}
+          {/* Per-School Identities List & Card Manager */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-widest text-[#2A4228] dark:text-[#8BA888] font-bold flex items-center gap-1">
                 <GraduationCap className="w-3.5 h-3.5" />
-                <span>Hồ sơ trường học đã xác thực</span>
+                <span>Danh tính theo từng trường học đã tham gia</span>
               </span>
               <button
                 type="button"
                 onClick={onOpenVerify}
-                className="text-[10px] font-bold text-[#2A4228] dark:text-[#8BA888] hover:underline"
+                className="text-[10px] font-bold text-[#2A4228] dark:text-[#8BA888] hover:underline flex items-center gap-1"
               >
-                + Quét xác thực thêm trường
+                <span>+ Quét Thẻ AI / Xác thực thêm trường</span>
               </button>
             </div>
 
-            {userState.verificationStatus === 'verified' && (userState.verifiedSchools || []).length > 0 ? (
-              <div className="space-y-2">
-                {(userState.verifiedSchools || []).map(sch => {
-                  const record = userState.schoolVerifications?.[sch.id];
-                  const schoolCohort = record?.cohort || userState.schoolCohorts?.[sch.id] || userState.verifiedCohort || (sch.type === 'university' ? 'K22' : 'Khóa 2023 - 2026');
-                  const schoolMajor = record?.major || userState.verifiedMajor || (sch.type === 'university' ? 'Sinh viên chính quy' : 'Học sinh');
-                  const studentName = record?.studentName || userState.verifiedFullName || userState.displayName || 'Học sinh / Sinh viên';
+            {/* Render School Cards */}
+            {(() => {
+              const displaySchools = (userState.verifiedSchools && userState.verifiedSchools.length > 0)
+                ? userState.verifiedSchools
+                : (userState.selectedSchool ? [userState.selectedSchool] : []);
 
-                  return (
-                    <div
-                      key={sch.id}
-                      className="p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left"
+              if (displaySchools.length === 0) {
+                return (
+                  <div className="p-4 rounded-2xl border border-dashed border-[#C8D2C4] dark:border-[#3A4738] text-center space-y-2">
+                    <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A]">
+                      Bạn chưa xác thực thẻ trường học nào. Hãy xác thực để nhận huy hiệu chính thức và mở khóa Hộp thư trường!
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onOpenVerify}
+                      className="px-4 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#385036] text-white text-xs font-bold shadow-sm"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-[#2A4228] text-white flex items-center justify-center shrink-0 shadow-xs">
-                          <span className="material-symbols-outlined text-lg">
-                            {sch.type === 'university' ? 'school' : 'apartment'}
-                          </span>
-                        </div>
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] truncate">
-                              {sch.name}
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center gap-0.5 shrink-0">
-                              <span>🔒 AI Locked</span>
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
-                            {studentName} &bull; <span className="font-semibold text-[#2A4228] dark:text-[#8BA888]">{schoolMajor}</span> &bull; <span>{schoolCohort}</span>
-                          </p>
-                        </div>
-                      </div>
+                      Xác thực ngay bằng Thẻ AI / Email .edu.vn
+                    </button>
+                  </div>
+                );
+              }
 
-                      <div className="flex items-center gap-1.5 shrink-0 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-[#151C14] px-2.5 py-1.5 rounded-xl border border-[#8BA888]/30">
-                        <span className="material-symbols-outlined text-sm">verified</span>
-                        <span>Chống sửa đổi 100%</span>
+              return (
+                <div className="space-y-3">
+                  {displaySchools.map(sch => {
+                    const record = userState.schoolVerifications?.[sch.id];
+                    const isSchoolLocked = !!record?.isIdentityLocked;
+                    const schoolMajor = schoolFormStates[sch.id]?.major ?? (record?.major || userState.verifiedMajor || (sch.type === 'university' ? 'Công nghệ thông tin' : 'Chuyên Tin'));
+                    const schoolCohort = schoolFormStates[sch.id]?.cohort ?? (record?.cohort || userState.schoolCohorts?.[sch.id] || userState.verifiedCohort || (sch.type === 'university' ? 'K22 (2022-2026)' : 'K21-24'));
+                    const studentName = userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName;
+
+                    return (
+                      <div
+                        key={sch.id}
+                        className={`p-4 rounded-2xl border transition-all text-left space-y-3 ${
+                          isSchoolLocked
+                            ? 'bg-[#FAF9F6] dark:bg-[#1E271D] border-emerald-500/30'
+                            : 'bg-white dark:bg-[#151C14] border-[#C8D2C4] dark:border-[#3A4738]'
+                        }`}
+                      >
+                        {/* School Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                              isSchoolLocked ? 'bg-[#2A4228] text-white' : 'bg-amber-600 text-white'
+                            }`}>
+                              <span className="material-symbols-outlined text-lg">
+                                {sch.type === 'university' ? 'school' : 'apartment'}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] truncate">
+                                  {sch.name}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 font-bold uppercase shrink-0">
+                                  {sch.type === 'university' ? 'Đại học' : 'THPT'}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                                {sch.location || 'Việt Nam'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {isSchoolLocked ? (
+                              <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center gap-1 border border-emerald-500/30">
+                                <span className="material-symbols-outlined text-xs">lock</span>
+                                <span>Đã Khóa AI</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1 border border-amber-500/30">
+                                <span className="material-symbols-outlined text-xs">edit</span>
+                                <span>Chưa Khóa</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Per-School Major & Cohort Inputs */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          {/* School Major */}
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1">
+                              Chuyên ngành / Lớp gốc ({sch.type === 'university' ? 'Ngành học' : 'Khối/Chuyên'})
+                            </label>
+                            <input
+                              type="text"
+                              value={schoolMajor}
+                              readOnly={isSchoolLocked}
+                              disabled={isSchoolLocked}
+                              onChange={(e) => handleUpdateSchoolFormField(sch.id, 'major', e.target.value)}
+                              placeholder={sch.type === 'university' ? 'VD: Khoa học Máy tính, Marketing...' : 'VD: Chuyên Tin, Lớp 12A1...'}
+                              className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
+                                isSchoolLocked
+                                  ? 'bg-[#2A4228]/5 dark:bg-[#1C241B] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed select-all'
+                                  : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
+                              }`}
+                            />
+                          </div>
+
+                          {/* School Cohort */}
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider font-bold text-[#5A6D58] dark:text-[#8E9B8A] mb-1">
+                              Khóa / Niên khóa tại trường
+                            </label>
+                            <input
+                              type="text"
+                              value={schoolCohort}
+                              readOnly={isSchoolLocked}
+                              disabled={isSchoolLocked}
+                              onChange={(e) => handleUpdateSchoolFormField(sch.id, 'cohort', e.target.value)}
+                              placeholder="VD: K21-24, K22 (2022-2026)..."
+                              className={`w-full rounded-xl p-2.5 text-xs font-bold border ${
+                                isSchoolLocked
+                                  ? 'bg-[#2A4228]/5 dark:bg-[#1C241B] border-[#8BA888]/40 text-[#2A4228] dark:text-[#8BA888] cursor-not-allowed select-all'
+                                  : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#C8D2C4] dark:border-[#3A4738] text-[#2A4228] dark:text-[#8BA888] focus:outline-none focus:border-[#2A4228]'
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* If NOT locked for this school: Action Button */}
+                        {!isSchoolLocked && (
+                          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#E5E2D9] dark:border-[#3A4738]">
+                            <p className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                              Lưu 1 lần duy nhất để chống giả mạo danh tính trong trường này.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleInitiateLockForSchool(sch, schoolMajor, schoolCohort)}
+                              className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-[#2A4228] hover:bg-[#1E301D] text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              <span className="material-symbols-outlined text-sm">lock</span>
+                              <span>Khóa Danh Tính Cho Trường Này 🔒</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl border border-dashed border-[#C8D2C4] dark:border-[#3A4738] text-center space-y-2">
-                <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A]">
-                  Bạn chưa xác thực thẻ trường học nào. Hãy xác thực để nhận huy hiệu chính thức và mở khóa Hộp thư trường!
-                </p>
-                <button
-                  type="button"
-                  onClick={onOpenVerify}
-                  className="px-4 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#385036] text-white text-xs font-bold shadow-sm"
-                >
-                  Xác thực ngay bằng Thẻ AI / Email .edu.vn
-                </button>
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -821,20 +850,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Họ và tên thật:</span>
-                  <span className="font-bold text-[#182217] dark:text-[#E8ECE6]">{manualFullName.trim()}</span>
+                  <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Họ và tên thật (Thống nhất):</span>
+                  <span className="font-bold text-[#182217] dark:text-[#E8ECE6]">
+                    {(userState.isIdentityLocked ? (userState.verifiedFullName || userState.displayName || '') : manualFullName).trim()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Trường áp dụng:</span>
+                  <span className="font-bold text-[#182217] dark:text-[#E8ECE6] truncate max-w-[200px]">
+                    {activeTargetSchoolForLock?.name || userState.selectedSchool?.name || 'Trường học của bạn'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Chuyên ngành / Lớp gốc:</span>
-                  <span className="font-bold text-[#2A4228] dark:text-[#8BA888]">{manualMajor.trim()}</span>
+                  <span className="font-bold text-[#2A4228] dark:text-[#8BA888]">
+                    {activeTargetSchoolForLock?.major || 'Chuyên Tin'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Khóa / Niên khóa:</span>
-                  <span className="font-bold text-[#2A4228] dark:text-[#8BA888]">{manualCohort.trim()}</span>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-[#E5E2D9] dark:border-[#3A4738]">
-                  <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Trường áp dụng:</span>
-                  <span className="font-bold text-[#182217] dark:text-[#E8ECE6] truncate max-w-[200px]">{userState.selectedSchool?.name || 'Trường học của bạn'}</span>
+                  <span className="font-bold text-[#2A4228] dark:text-[#8BA888]">
+                    {activeTargetSchoolForLock?.cohort || 'K21-24'}
+                  </span>
                 </div>
               </div>
             </div>
