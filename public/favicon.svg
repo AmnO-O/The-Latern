@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#182717"/>
+      <stop offset="100%" stop-color="#0E190D"/>
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#E28743"/>
+      <stop offset="50%" stop-color="#F2BE22"/>
+      <stop offset="100%" stop-color="#FFF9D2"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F2BE22" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#F2BE22" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Base Rounded Badge -->
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)" />
+  <rect width="60" height="60" x="2" y="2" rx="14" fill="none" stroke="#3A4D39" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Ambient Golden Glow -->
+  <circle cx="32" cy="35" r="22" fill="url(#glowGrad)" />
+
+  <!-- Lantern Top Hook / Ring -->
+  <path d="M32 10 C29 10 27 12 27 14 C27 15 28 16 30 16 L34 16 C36 16 37 15 37 14 C37 12 35 10 32 10 Z" fill="none" stroke="#D1B87F" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Lantern Roof -->
+  <path d="M22 19 L42 19 L46 25 L18 25 Z" fill="#2D432B" stroke="#D1B87F" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Glass Chamber Frame -->
+  <path d="M20 25 L24 45 L40 45 L44 25 Z" fill="#1B2B19" fill-opacity="0.6" stroke="#D1B87F" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Lantern Bottom Base -->
+  <path d="M22 45 L42 45 L40 49 L24 49 Z" fill="#2D432B" stroke="#D1B87F" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Center Glowing Flame -->
+  <path d="M32 28 C34.5 32 37 34 37 38 C37 41.5 34.5 43.5 32 43.5 C29.5 43.5 27 41.5 27 38 C27 34 29.5 32 32 28 Z" fill="url(#flameGrad)" />
+
+  <!-- Tiny Inner Sparkle -->
+  <circle cx="32" cy="36" r="1.8" fill="#FFFFFF" opacity="0.9"/>
+</svg>

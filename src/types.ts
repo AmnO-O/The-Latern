@@ -194,3 +194,17 @@ export interface UserState {
     photoURL?: string;
   };
 }
+
+export interface LanternNotification {
+  id: string;
+  type: 'reply' | 'tag' | 'counselor_response' | 'hug';
+  postId: string;
+  postTitle: string;
+  senderName: string;
+  senderRole?: AuthorRole;
+  message: string;
+  createdAt: number;
+  isRead: boolean;
+  replyId?: string;
+  schoolName?: string;
+}

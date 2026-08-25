@@ -5,7 +5,8 @@ import {
   Post, 
   DirectThread, 
   UserState, 
-  Reply 
+  Reply,
+  LanternNotification
 } from './types';
 import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
@@ -26,6 +27,7 @@ import { ShareModal } from './components/ShareModal';
 import { AmbientSoundModal } from './components/AmbientSoundModal';
 import { CampusGlobeView } from './components/CampusGlobeView';
 import { PeerMentorModal } from './components/PeerMentorModal';
+import { NotificationsModal } from './components/NotificationsModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
@@ -206,9 +208,40 @@ export default function App() {
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
   const [isAmbientModalOpen, setIsAmbientModalOpen] = useState(false);
   const [isPeerMentorModalOpen, setIsPeerMentorModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<LanternNotification[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_notifications');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse notifications from localStorage:', e);
+    }
+    return [
+      {
+        id: 'notif-welcome',
+        type: 'counselor_response',
+        postId: '',
+        postTitle: 'Chào mừng bạn đến với HealSpace Sanctuary',
+        senderName: 'Ngọn Đèn Thấu Hiểu',
+        message: 'Không gian ẩn danh an toàn và thấu hiểu. Bạn có thể chia sẻ tâm sự hoặc gửi thư tư vấn đến Ban Cố Vấn trường bất cứ lúc nào.',
+        createdAt: Date.now() - 3600000,
+        isRead: false
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_notifications', JSON.stringify(notifications));
+    } catch (e) {
+      console.warn('Failed to save notifications to localStorage:', e);
+    }
+  }, [notifications]);
 
   // User State with local cache restore
   const [userState, setUserState] = useState<UserState>(() => {
@@ -394,6 +427,33 @@ export default function App() {
   };
 
   const userDisplayName = userState.googleUser?.displayName || `Người dùng ẩn danh #${userState.userAnonNumber}`;
+
+  // Notification helper actions
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleSelectNotification = (notif: LanternNotification) => {
+    handleMarkNotificationAsRead(notif.id);
+    setIsNotificationsModalOpen(false);
+    if (notif.postId) {
+      const targetPost = posts.find(p => p.id === notif.postId);
+      if (targetPost) {
+        setSelectedPost(targetPost);
+        setActiveTab('post_detail');
+      } else {
+        setActiveTab('feed');
+      }
+    }
+  };
 
   // Real-time listener for Direct Message Threads from Firestore
   useEffect(() => {
@@ -965,6 +1025,49 @@ export default function App() {
         replies: [...prev.replies, newReply]
       } : null);
     }
+
+    // Generate notification for post author, comment reply, or tag mention
+    if (targetPost) {
+      const isReplyingToMyComment = replyTo && (
+        replyTo.authorName === userDisplayName ||
+        replyTo.authorName === `#${userState.userAnonNumber}`
+      );
+
+      const currentAnonTag = `#${userState.userAnonNumber}`;
+      const hasTag = content.includes('@') || (userDisplayName && content.includes(`@${userDisplayName}`)) || content.includes(currentAnonTag);
+
+      const notifType = targetPost.isCounselingMailbox 
+        ? 'counselor_response' 
+        : hasTag 
+          ? 'tag' 
+          : 'reply';
+
+      const notifTitle = targetPost.title || 'Lá thư ẩn danh';
+      let notifMessage = '';
+
+      if (notifType === 'counselor_response') {
+        notifMessage = `${authorName} đã gửi phản hồi tư vấn cho tâm thư của bạn: "${content.slice(0, 75)}${content.length > 75 ? '...' : ''}"`;
+      } else if (hasTag) {
+        notifMessage = `${authorName} đã nhắc đến bạn trong một bình luận: "${content.slice(0, 75)}${content.length > 75 ? '...' : ''}"`;
+      } else if (isReplyingToMyComment) {
+        notifMessage = `${authorName} đã trả lời bình luận của bạn: "${content.slice(0, 75)}${content.length > 75 ? '...' : ''}"`;
+      } else {
+        notifMessage = `${authorName} đã gửi phản hồi vào bài viết "${notifTitle}": "${content.slice(0, 75)}${content.length > 75 ? '...' : ''}"`;
+      }
+
+      const newNotif: LanternNotification = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        type: notifType,
+        postId: postId,
+        postTitle: notifTitle,
+        senderName: authorName,
+        message: notifMessage,
+        createdAt: Date.now(),
+        isRead: false
+      };
+
+      setNotifications(prev => [newNotif, ...prev]);
+    }
   };
 
   // Direct Chat send message with Firestore Real-time Sync
@@ -1347,6 +1450,8 @@ export default function App() {
         openEmergency={() => setIsEmergencyOpen(true)}
         openAmbientModal={() => setIsAmbientModalOpen(true)}
         openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
+        openNotificationsModal={() => setIsNotificationsModalOpen(true)}
+        unreadNotificationsCount={notifications.filter(n => !n.isRead).length}
         isDesktopCollapsed={isSidebarCollapsed}
         setIsDesktopCollapsed={setIsSidebarCollapsed}
       />
@@ -1698,6 +1803,16 @@ export default function App() {
       <AmbientSoundModal
         isOpen={isAmbientModalOpen}
         onClose={() => setIsAmbientModalOpen(false)}
+      />
+
+      <NotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkNotificationAsRead}
+        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+        onClearAll={handleClearAllNotifications}
+        onSelectNotification={handleSelectNotification}
       />
     </div>
   );

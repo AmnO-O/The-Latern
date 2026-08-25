@@ -21,7 +21,8 @@ import {
   X,
   Radio,
   HeartHandshake,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { ActiveTab, School, UserState } from '../types';
 import { loginWithGoogle, logout } from '../lib/firebase';
@@ -42,6 +43,8 @@ interface NavbarProps {
   openEmergency: () => void;
   openAmbientModal?: () => void;
   openPeerMentorModal?: () => void;
+  openNotificationsModal?: () => void;
+  unreadNotificationsCount?: number;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
 }
@@ -60,6 +63,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   openEmergency,
   openAmbientModal,
   openPeerMentorModal,
+  openNotificationsModal,
+  unreadNotificationsCount = 0,
   isDesktopCollapsed = false,
   setIsDesktopCollapsed
 }) => {
@@ -303,6 +308,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             />
           )}
         </button>
+
+        {/* Notifications Button */}
+        {openNotificationsModal && (
+          <button
+            onClick={() => {
+              openNotificationsModal();
+              setIsMobileDrawerOpen(false);
+            }}
+            className={`flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-xl text-xs font-semibold transition-all text-[var(--text-muted)] hover:bg-[#EAF0E8]/70 dark:hover:bg-white/5 hover:text-[var(--text-primary)] relative`}
+            title="Thông báo"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="relative">
+                <Bell className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
+                {unreadNotificationsCount > 0 && isCollapsed && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-600 border-2 border-[var(--bg-card)]"></span>
+                )}
+              </div>
+              {!isCollapsed && <span>Thông báo</span>}
+            </div>
+            {!isCollapsed && unreadNotificationsCount > 0 && (
+              <span className="bg-emerald-700 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Peer Mentor CTA Button */}
         {openPeerMentorModal && (
@@ -551,7 +583,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Notifications button mobile */}
+          {openNotificationsModal && (
+            <button
+              onClick={openNotificationsModal}
+              className="p-1.5 rounded-xl text-[#0F180E] dark:text-[#E8ECE6] hover:bg-[#EAF0E8] dark:hover:bg-[#20281F] relative"
+              title="Thông báo"
+            >
+              <Bell className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-600 border border-white dark:border-[#1E271D]"></span>
+              )}
+            </button>
+          )}
+
           {/* Theme toggle mobile */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

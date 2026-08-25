@@ -104,6 +104,21 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
     setScopeFilter(target);
   };
 
+  const isMentorOrCounselor = Boolean(
+    isAdmin ||
+    userState?.isPeerMentor ||
+    userState?.isCampusCounselor ||
+    userState?.userRole === 'peer_listener' ||
+    userState?.userRole === 'mentor' ||
+    userState?.userRole === 'admin_moderator'
+  );
+
+  const isAuthorOfPost = (p: Post) => {
+    if (myPostIds.includes(p.id)) return true;
+    if (p.authorUid && currentUserId && p.authorUid === currentUserId) return true;
+    return false;
+  };
+
   // Base posts selection based on selected school or global view
   const basePosts = isGlobalView
     ? posts.filter(p => p.isPublic === true)
@@ -118,9 +133,21 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
       return p.isPublic === true && !p.isCounselingMailbox;
     }
 
-    if (scopeFilter === 'counseling') return p.isCounselingMailbox === true;
+    if (scopeFilter === 'counseling') {
+      if (!p.isCounselingMailbox) return false;
+      // Regular students only see their own counseling submissions
+      // Mentors/Counselors/Admins see all counseling submissions for this school
+      return isMentorOrCounselor || isAuthorOfPost(p);
+    }
+
     if (scopeFilter === 'public') return p.isPublic === true && !p.isCounselingMailbox;
     if (scopeFilter === 'campus') return p.isPublic !== true && !p.isCounselingMailbox;
+
+    // In 'all' scope: counseling posts are hidden from non-author regular students
+    if (p.isCounselingMailbox) {
+      return isMentorOrCounselor || isAuthorOfPost(p);
+    }
+
     return true;
   });
 
@@ -429,19 +456,68 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
           </button>
         </div>
 
+        {/* Counseling Privacy Banner */}
+        {scopeFilter === 'counseling' && !isGlobalView && (
+          <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/25 flex items-start gap-3 animate-fade-in">
+            <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-4 h-4" />
+            </div>
+            <div className="text-xs space-y-0.5 flex-1">
+              <h4 className="font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
+                <span>{isMentorOrCounselor ? '🌿 Chế độ Ban Cố Vấn & Peer Mentor' : '🔒 Hòm Thư Tư Vấn Riêng Tư (Bảo Mật 100%)'}</span>
+                <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.2 rounded-full font-bold">Riêng tư 1-1</span>
+              </h4>
+              <p className="text-[#42493F] dark:text-[#9DA99B] leading-relaxed text-[11px]">
+                {isMentorOrCounselor
+                  ? `Bạn có thẩm quyền đọc và đồng hành hồi đáp cho các tâm sự học đường cần hỗ trợ tâm lý tại ${school.name}.`
+                  : `Chỉ bạn và Ban Cố Vấn / Peer Mentor trường mới xem được các bức thư của bạn. Các bạn học sinh khác hoàn toàn không thể thấy nội dung này.`}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Posts List */}
         <div className="flex flex-col gap-4">
           {filteredPosts.length === 0 ? (
-            <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A]">
-              <MailCheck className="w-10 h-10 mx-auto mb-2 text-[#8BA888]/60" />
-              <p className="text-sm font-medium">Chưa có lá thư nào thuộc danh mục này.</p>
-              <button
-                onClick={openComposer}
-                className="mt-3 text-xs text-[#5A6E58] dark:text-[#8E9B8A] font-bold hover:underline"
-              >
-                Hãy là người đầu tiên gửi thư ẩn danh ✍️
-              </button>
-            </div>
+            scopeFilter === 'counseling' ? (
+              <div className="bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] glass-panel rounded-3xl p-8 text-center space-y-3">
+                <div className="w-14 h-14 rounded-3xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl mx-auto shadow-inner">
+                  💌
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
+                    {isMentorOrCounselor
+                      ? 'Hòm thư tư vấn hiện đang trống'
+                      : 'Bạn chưa gửi bức thư tư vấn nào'}
+                  </h4>
+                  <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] max-w-sm mx-auto leading-relaxed">
+                    {isMentorOrCounselor
+                      ? 'Chưa có học sinh nào gửi yêu cầu hỗ trợ tâm lý tại trường này.'
+                      : 'Nếu bạn đang đối diện với áp lực thi cử, gia đình hay tâm sự khó nói, hãy gửi một bức thư ẩn danh để nhận lời khuyên chân thành từ Ban Cố Vấn nhé.'}
+                  </p>
+                </div>
+                {!isMentorOrCounselor && (
+                  <button
+                    onClick={openComposer}
+                    className="mt-2 px-5 py-2.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  >
+                    <HeartHandshake className="w-4 h-4 text-emerald-300" />
+                    <span>Gửi tâm thư tư vấn ẩn danh ngay</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A]">
+                <MailCheck className="w-10 h-10 mx-auto mb-2 text-[#8BA888]/60" />
+                <p className="text-sm font-medium">Chưa có lá thư nào thuộc danh mục này.</p>
+                <button
+                  onClick={openComposer}
+                  className="mt-3 text-xs text-[#5A6E58] dark:text-[#8E9B8A] font-bold hover:underline"
+                >
+                  Hãy là người đầu tiên gửi thư ẩn danh ✍️
+                </button>
+              </div>
+            )
           ) : (
             filteredPosts.map(post => {
               const isAuthor = myPostIds.includes(post.id) || (!!currentUserId && post.authorUid === currentUserId);
