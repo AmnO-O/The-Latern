@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+
+    // Schools Collection
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Posts Collection
+    match /posts/{postId} {
+      // Allow read for approved posts or if public or if user is authenticated
+      allow read: if true;
+      
+      // Allow create post
+      allow create: if true;
+
+      // Allow update for likes, hugs, replies count or moderation
+      allow update, delete: if true;
+
+      // Nested replies
+      match /replies/{replyId} {
+        allow read: if true;
+        allow create, update, delete: if true;
+      }
+    }
+
+    // Direct Threads Collection
+    match /direct_threads/{threadId} {
+      allow read, write: if true;
+      
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-serif: 'Newsreader', Georgia, serif;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, .font-serif-headline {
+    font-family: var(--font-serif);
+    color: var(--text-primary);
+  }
+}
+
+/* Natural Tones & Sanctuary Themes */
+.dark {
+  --bg-main: #141a13;
+  --bg-card: rgba(30, 40, 29, 0.95);
+  --bg-card-solid: #1e291d;
+  --bg-pill: #253324;
+  --border-glass: rgba(139, 168, 136, 0.25);
+  --border-glass-hover: rgba(139, 168, 136, 0.5);
+  --text-primary: #f2f7f1;
+  --text-muted: #abb8a8;
+  --accent-sage: #8ba888;
+  --accent-sage-dark: #5a6e58;
+  --accent-sand: #d4a373;
+  --accent-amber: #8ba888;
+  --accent-bg-subtle: rgba(139, 168, 136, 0.15);
+}
+
+.light {
+  --bg-main: #f4f7f3;
+  --bg-card: rgba(255, 255, 255, 0.99);
+  --bg-card-solid: #ffffff;
+  --bg-pill: #e2ebe0;
+  --border-glass: #b8c7b4;
+  --border-glass-hover: #9bb096;
+  --text-primary: #050a04;
+  --text-muted: #4a5c48;
+  --accent-sage: #1e351c;
+  --accent-sage-dark: #102010;
+  --accent-sand: #8d4f16;
+  --accent-amber: #1e351c;
+  --accent-bg-subtle: #e2ebe0;
+}
+
+.lantern-glow {
+  box-shadow: 0 0 25px 6px rgba(139, 168, 136, 0.25);
+}
+
+.lantern-glow-strong {
+  box-shadow: 0 0 45px 12px rgba(139, 168, 136, 0.35);
+}
+
+.glass-panel {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 168, 136, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 168, 136, 0.5);
+}
+
+@keyframes pulse-soft {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.03); opacity: 1; }
+}
+
+.pulse-soft {
+  animation: pulse-soft 3s infinite alternate ease-in-out;
+}
+
+/* 3D Perspective & Page Turn Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.perspective-1600 {
+  perspective: 1600px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.page-turn-shadow {
+  box-shadow: -8px 0 25px -4px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.dark .page-turn-shadow {
+  box-shadow: -8px 0 25px -4px rgba(0, 0, 0, 0.4), 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.letter-spine {
+  background: linear-gradient(to right, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.03) 40%, rgba(255,255,255,0.05) 100%);
+}
+
+.dark .letter-spine {
+  background: linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 40%, rgba(255,255,255,0.02) 100%);
+}
+
+/* Custom Leaflet Dark Popup */
+.clean-dark-leaflet-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 16px !important;
+}
+
+.clean-dark-leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.clean-dark-leaflet-popup .leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  box-shadow: none !important;
+}
+
+/* User Distribution Glowing Dot Animations */
+@keyframes ambientGlowPulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.75;
+    box-shadow: 0 0 12px 3px rgba(245, 158, 11, 0.5), inset 0 0 8px rgba(254, 240, 138, 0.6);
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+    box-shadow: 0 0 24px 8px rgba(245, 158, 11, 0.75), inset 0 0 12px rgba(254, 240, 138, 0.9);
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+    box-shadow: 0 0 12px 3px rgba(245, 158, 11, 0.5), inset 0 0 8px rgba(254, 240, 138, 0.6);
+  }
+}
+
+@keyframes outerWaveRing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.glow-core-dot {
+  animation: ambientGlowPulse 2.8s infinite ease-in-out;
+}
+
+.glow-outer-wave {
+  animation: outerWaveRing 3.2s infinite cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.glow-outer-wave-delayed {
+  animation: outerWaveRing 3.2s infinite cubic-bezier(0.2, 0.8, 0.3, 1) 1.6s;
+}
+
+/* Modern Badge Pin Ground Shadow Animation */
+@keyframes pinGroundPulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+}
+
+.pin-ground-shadow {
+  animation: pinGroundPulse 2.4s infinite ease-in-out;
+}
+
+.category-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+.category-pills-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+

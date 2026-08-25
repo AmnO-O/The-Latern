@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "posts": {
+      "title": "Letters & Posts",
+      "description": "Anonymous letters sent to campus mailboxes or public feed",
+      "properties": {
+        "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "schoolSlug": { "type": "string" },
+        "authorAnonId": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "authorClassBadge": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "likesCount": { "type": "number" },
+        "hugsCount": { "type": "number" },
+        "repliesCount": { "type": "number" },
+        "status": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "imageUrl": { "type": "string" },
+        "imageAnalysis": { "type": "object" },
+        "crisisDetected": { "type": "boolean" },
+        "flagReason": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "expiresAt": { "type": "number" },
+        "expiryDurationDays": { "type": "number" },
+        "isAnonymousGuest": { "type": "boolean" }
+      },
+      "required": ["schoolId", "title", "content", "status"]
+    },
+    "users": {
+      "title": "User Profiles",
+      "description": "Authenticated user information and verification status",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "userAnonNumber": { "type": "number" },
+        "verificationStatus": { "type": "string" },
+        "selectedSchoolId": { "type": "string" },
+        "selectedSchoolName": { "type": "string" },
+        "hugsGivenCount": { "type": "number" },
+        "userRole": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "direct_threads": {
+      "title": "Direct Message Threads",
+      "description": "Real-time anonymous 1-1 chat threads between peers or author and listeners",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "participantNames": { "type": "object" },
+        "peerName": { "type": "string" },
+        "peerRole": { "type": "string" },
+        "roleTitle": { "type": "string" },
+        "threadType": { "type": "string" },
+        "relatedPostId": { "type": "string" },
+        "relatedPostTitle": { "type": "string" },
+        "relatedPostSnippet": { "type": "string" },
+        "relatedSchoolName": { "type": "string" },
+        "messages": { "type": "array", "items": { "type": "object" } },
+        "lastMessageAt": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "participants"]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "The Lantern - Secret Night Sanctuary",
+  "description": "Không gian an toàn và thấu hiểu dành cho giới trẻ - Hộp thư ẩn danh Campus Hubs, kiểm duyệt AI chống bắt nạt, kết nối người lắng nghe và chuyên gia tâm lý.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
