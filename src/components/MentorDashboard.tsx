@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Sparkles } from 'lucide-react';
-import { Post } from '../types';
+import { 
+  Sparkles, 
+  Users, 
+  GraduationCap, 
+  Globe, 
+  CheckCircle2, 
+  XCircle, 
+  Eye, 
+  Image as ImageIcon, 
+  ShieldCheck, 
+  Clock, 
+  FileText,
+  UserCheck
+} from 'lucide-react';
+import { Post, PeerMentorApplication } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getFormattedAuthorName } from '../lib/authorUtils';
 
@@ -9,41 +22,58 @@ interface MentorDashboardProps {
   onApprovePost: (postId: string) => void;
   onRejectPost: (postId: string) => void;
   onMentorReplyToPost: (postId: string, content: string) => void;
+  applications?: PeerMentorApplication[];
+  onApproveApplication?: (applicationId: string, role: 'peer_listener' | 'specialist') => void;
+  onRejectApplication?: (applicationId: string, reason?: string) => void;
 }
 
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   posts,
   onApprovePost,
   onRejectPost,
-  onMentorReplyToPost
+  onMentorReplyToPost,
+  applications = [],
+  onApproveApplication,
+  onRejectApplication
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_queue' | 'all_master_feed'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_applications' | 'all_master_feed' | 'mentor_queue'>('mentor_applications');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'public' | 'campus'>('all');
+  const [appStatusFilter, setAppStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [replyInput, setReplyInput] = useState<{ [postId: string]: string }>({});
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  const pendingAppsCount = applications.filter(a => a.status === 'pending').length;
+  const pendingPostsCount = posts.filter(p => p.status === 'flagged' || p.status === 'pending_review').length;
+
+  // Filter applications
+  const filteredApplications = applications.filter(app => {
+    if (appStatusFilter !== 'all' && app.status !== appStatusFilter) return false;
+    if (schoolFilter !== 'all' && app.schoolId !== schoolFilter && app.schoolName !== schoolFilter) return false;
+    return true;
+  });
 
   // Filter posts based on school, scope, and tab
   const filteredPosts = posts.filter(p => {
-    // School filter
     if (schoolFilter !== 'all' && p.schoolId !== schoolFilter && p.schoolName !== schoolFilter) {
       return false;
     }
-    // Scope filter
     if (scopeFilter === 'public' && !p.isPublic) return false;
     if (scopeFilter === 'campus' && p.isPublic) return false;
 
-    // Tab filter
     if (activeTab === 'moderation') {
       return p.status === 'flagged' || p.status === 'pending_review' || p.crisisDetected;
     }
     if (activeTab === 'mentor_queue') {
       return p.tags.includes('Áp lực học tập') || p.tags.includes('Gia đình') || p.crisisDetected;
     }
-    // all_master_feed shows everything across all schools!
     return true;
   });
 
-  const uniqueSchools = Array.from(new Set(posts.map(p => p.schoolName)));
+  const uniqueSchools = Array.from(new Set([
+    ...posts.map(p => p.schoolName),
+    ...applications.map(a => a.schoolName)
+  ]));
 
   const handleSendMentorReply = (postId: string) => {
     const text = replyInput[postId]?.trim();
@@ -55,208 +85,492 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 space-y-6 min-h-screen pb-24">
       {/* Header */}
-      <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#385036] dark:text-[#8BA888] bg-[#8BA888]/15 px-3 py-1 rounded-full">
-            Bảng điều khiển Chuyên gia & Kiểm duyệt Toàn Mạng
+          <span className="text-[10px] uppercase tracking-wider font-bold text-[#385036] dark:text-[#8BA888] bg-[#8BA888]/15 px-2.5 py-0.5 rounded-full">
+            Quản trị & Kiểm duyệt
           </span>
-          <h1 className="font-serif italic font-semibold text-2xl text-[#182217] dark:text-[#E8ECE6] mt-2">
-            Kiểm Duyệt AI & Đọc Tất Cả Lá Thư Mọi Trường
+          <h1 className="font-serif italic font-semibold text-2xl text-[#182217] dark:text-[#E8ECE6] mt-1.5">
+            Trung Tâm Duyệt Hồ Sơ & Kiểm Duyệt
           </h1>
           <p className="text-xs text-[#42493F] dark:text-[#8E9B8A] font-medium mt-0.5">
-            Cho phép xem tất cả lá thư từ mọi trường, lọc bài công khai & xem xét phân tích ảnh từ Gemini
+            Duyệt hồ sơ Bạn lắng nghe & Chuyên gia tâm lý, kiểm duyệt lá thư và phân tích an toàn.
           </p>
         </div>
 
-        <div className="flex bg-[#FAF9F6] dark:bg-[#20281F] p-1 rounded-full text-xs font-semibold border border-[#E5E2D9] dark:border-[#3A4738]">
+        {/* Tab Switcher */}
+        <div className="flex flex-wrap bg-[#FAF9F6] dark:bg-[#20281F] p-1 rounded-2xl text-xs font-semibold border border-[#E5E2D9] dark:border-[#3A4738]">
+          <button
+            onClick={() => setActiveTab('mentor_applications')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+              activeTab === 'mentor_applications' ? 'bg-[#385036] text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Duyệt Hồ Sơ</span>
+            {pendingAppsCount > 0 && (
+              <span className="bg-amber-500 text-black text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                {pendingAppsCount}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('moderation')}
-            className={`px-3 py-1.5 rounded-full transition-all ${
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'moderation' ? 'bg-[#385036] text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
             }`}
           >
-            Cần Kiểm Duyệt ({posts.filter(p => p.status === 'flagged' || p.status === 'pending_review').length})
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Duyệt Bài ({pendingPostsCount})</span>
           </button>
+
           <button
             onClick={() => setActiveTab('all_master_feed')}
-            className={`px-3 py-1.5 rounded-full transition-all ${
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'all_master_feed' ? 'bg-[#385036] text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
             }`}
           >
-            🌐 Tất Cả Bài Mọi Trường
+            <Globe className="w-3.5 h-3.5" />
+            <span>Mọi Lá Thư</span>
           </button>
+
           <button
             onClick={() => setActiveTab('mentor_queue')}
-            className={`px-3 py-1.5 rounded-full transition-all ${
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'mentor_queue' ? 'bg-[#385036] text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
             }`}
           >
-            Tư vấn Tâm lý
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Tư Vấn</span>
           </button>
         </div>
       </div>
 
-      {/* Advanced Master Controls & Filters */}
-      <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+      {/* Filter Bar */}
+      <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           {/* School Filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="font-bold text-[#3A4036] dark:text-[#E8ECE6]">Trường:</span>
             <select
               value={schoolFilter}
               onChange={(e) => setSchoolFilter(e.target.value)}
-              className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl py-1.5 px-3 text-xs text-[#3A4036] dark:text-[#E8ECE6] font-medium"
+              className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl py-1 px-2.5 text-xs text-[#3A4036] dark:text-[#E8ECE6]"
             >
-              <option value="all">🏫 Tất cả các trường (Mọi nơi)</option>
+              <option value="all">🏫 Tất cả các trường</option>
               {uniqueSchools.map(schName => (
                 <option key={schName} value={schName}>{schName}</option>
               ))}
             </select>
           </div>
 
-          {/* Scope Filter */}
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-[#3A4036] dark:text-[#E8ECE6]">Phạm vi:</span>
-            <select
-              value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value as any)}
-              className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl py-1.5 px-3 text-xs text-[#3A4036] dark:text-[#E8ECE6] font-medium"
-            >
-              <option value="all">Bất kỳ phạm vi nào</option>
-              <option value="public">🌐 Chỉ bài Công khai toàn quốc</option>
-              <option value="campus">🏫 Chỉ bài Hộp thư trường</option>
-            </select>
-          </div>
+          {/* Applications Status Filter */}
+          {activeTab === 'mentor_applications' && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-[#3A4036] dark:text-[#E8ECE6]">Trạng thái:</span>
+              <select
+                value={appStatusFilter}
+                onChange={(e) => setAppStatusFilter(e.target.value as any)}
+                className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl py-1 px-2.5 text-xs text-[#3A4036] dark:text-[#E8ECE6]"
+              >
+                <option value="all">Tất cả ({applications.length})</option>
+                <option value="pending">⏳ Chờ duyệt ({applications.filter(a => a.status === 'pending').length})</option>
+                <option value="approved">✓ Đã duyệt ({applications.filter(a => a.status === 'approved').length})</option>
+                <option value="rejected">✕ Đã từ chối ({applications.filter(a => a.status === 'rejected').length})</option>
+              </select>
+            </div>
+          )}
+
+          {/* Posts Scope Filter */}
+          {activeTab !== 'mentor_applications' && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-[#3A4036] dark:text-[#E8ECE6]">Phạm vi:</span>
+              <select
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value as any)}
+                className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl py-1 px-2.5 text-xs text-[#3A4036] dark:text-[#E8ECE6]"
+              >
+                <option value="all">Mọi phạm vi</option>
+                <option value="public">🌐 Sảnh chung công khai</option>
+                <option value="campus">🏫 Hộp thư trường</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="text-[11px] text-[#5A6E58] dark:text-[#8BA888] font-bold">
-          Hiển thị: {filteredPosts.length} lá thư
+          {activeTab === 'mentor_applications'
+            ? `Hiển thị: ${filteredApplications.length} hồ sơ`
+            : `Hiển thị: ${filteredPosts.length} lá thư`}
         </div>
       </div>
 
-      {/* Main List */}
-      <div className="space-y-4">
-        {filteredPosts.length === 0 ? (
-          <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A] text-xs">
-            Không tìm thấy lá thư nào phù hợp với bộ lọc hiện tại.
-          </div>
-        ) : (
-          filteredPosts.map(post => (
-            <div
-              key={post.id}
-              className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-6 space-y-4 shadow-sm"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EFEB] dark:border-[#2C382A] pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-xs text-[#3A4036] dark:text-[#E8ECE6]">
-                    {getFormattedAuthorName(post)} ({post.schoolName})
-                  </span>
-                  {post.isPublic ? (
-                    <span className="bg-[#5A6E58]/15 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
-                      🌐 Công khai
+      {/* Applications Review Tab Content */}
+      {activeTab === 'mentor_applications' && (
+        <div className="space-y-3.5">
+          {filteredApplications.length === 0 ? (
+            <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A] text-xs">
+              Chưa có hồ sơ đăng ký nào theo bộ lọc đã chọn.
+            </div>
+          ) : (
+            filteredApplications.map(app => {
+              const isPending = app.status === 'pending';
+              const isApproved = app.status === 'approved';
+              const isRejected = app.status === 'rejected';
+
+              return (
+                <div
+                  key={app.id}
+                  className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-4.5 sm:p-5 space-y-3.5 shadow-sm"
+                >
+                  {/* Top Bar: Role badge, applicant name, date, status */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EFEB] dark:border-[#2C382A] pb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {app.roleType === 'specialist' ? (
+                        <span className="bg-sky-600/15 text-sky-800 dark:text-sky-300 border border-sky-600/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" />
+                          <span>Chuyên gia tâm lý</span>
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-600/15 text-emerald-800 dark:text-emerald-300 border border-emerald-600/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          <span>Bạn lắng nghe</span>
+                        </span>
+                      )}
+
+                      <span className="font-bold text-xs text-[#182217] dark:text-[#E8ECE6]">
+                        {app.applicantDisplayName || app.applicantAnonId || 'Ứng viên'}
+                      </span>
+
+                      <span className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                        • {app.schoolName}
+                      </span>
+
+                      {app.isGlobalScope && (
+                        <span className="bg-[#2A4228]/10 dark:bg-[#8BA888]/15 text-[#2A4228] dark:text-[#8BA888] text-[9px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                          <Globe className="w-2.5 h-2.5" />
+                          <span>Đa trường</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#8E9B8A]">
+                        {formatRelativeTime(app.appliedAt, new Date(app.appliedAt).toISOString())}
+                      </span>
+
+                      {isPending && (
+                        <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ⏳ Chờ duyệt
+                        </span>
+                      )}
+                      {isApproved && (
+                        <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Đã duyệt</span>
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ✕ Từ chối
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                    {/* Left 2 columns: Qualifications & Bio */}
+                    <div className="md:col-span-2 space-y-2">
+                      {app.qualificationTitle && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#182217] dark:text-[#E8ECE6]">Bằng cấp:</span>
+                          <span className="text-[#3A4036] dark:text-[#C5D0C3] font-medium">{app.qualificationTitle}</span>
+                        </div>
+                      )}
+
+                      {app.specialty && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#182217] dark:text-[#E8ECE6]">Chuyên ngành:</span>
+                          <span className="text-[#3A4036] dark:text-[#C5D0C3] font-medium">{app.specialty}</span>
+                        </div>
+                      )}
+
+                      {app.strengths && app.strengths.length > 0 && (
+                        <div>
+                          <span className="font-bold text-[#182217] dark:text-[#E8ECE6] block mb-1">Chủ đề hỗ trợ:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {app.strengths.map((s, idx) => (
+                              <span key={idx} className="bg-[#FAF9F6] dark:bg-[#20281F] border border-[#DCE4D8] dark:border-[#3A4738] text-[10px] px-2 py-0.5 rounded-md text-[#485346] dark:text-[#8E9B8A]">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {app.motivation && (
+                        <div className="bg-[#FAF9F6] dark:bg-[#20281F] p-2.5 rounded-xl border border-[#DCE4D8] dark:border-[#3A4738]">
+                          <span className="text-[10px] font-bold text-[#5A6D58] dark:text-[#8E9B8A] block mb-0.5">Chia sẻ / Kinh nghiệm:</span>
+                          <p className="text-[11px] text-[#2C382A] dark:text-[#C5D0C3] leading-relaxed italic">
+                            "{app.motivation}"
+                          </p>
+                        </div>
+                      )}
+
+                      {app.rejectionReason && (
+                        <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300 text-[11px]">
+                          <strong>Lý do từ chối:</strong> {app.rejectionReason}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right column: Certificate Image (if uploaded) */}
+                    <div className="space-y-1">
+                      <span className="font-bold text-[#182217] dark:text-[#E8ECE6] block text-[11px]">
+                        Minh chứng bằng cấp:
+                      </span>
+                      {app.certificateImageUrl ? (
+                        <div 
+                          onClick={() => setPreviewImageUrl(app.certificateImageUrl || null)}
+                          className="group relative cursor-pointer rounded-xl overflow-hidden border border-[#DCE4D8] dark:border-[#3A4738] bg-white h-28 flex items-center justify-center shadow-2xs"
+                        >
+                          <img 
+                            src={app.certificateImageUrl} 
+                            alt="Minh chứng" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold gap-1 transition-opacity">
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Xem ảnh</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-28 rounded-xl border border-dashed border-[#DCE4D8] dark:border-[#3A4738] bg-[#FAF9F6] dark:bg-[#20281F] flex flex-col items-center justify-center text-[#8E9B8A] text-[10px] p-2 text-center">
+                          <ImageIcon className="w-5 h-5 mb-1 opacity-40" />
+                          <span>Không có ảnh đính kèm (Đăng ký ẩn danh thông thường)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-2.5 border-t border-[#F0EFEB] dark:border-[#2C382A] flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[10px] text-[#8E9B8A]">
+                      Mã hồ sơ: <code className="text-[#3A4036] dark:text-[#E8ECE6]">{app.id}</code>
                     </span>
-                  ) : (
-                    <span className="bg-[#F1F3EF] dark:bg-[#20281F] text-[#7E7A71] dark:text-[#8E9B8A] border border-[#E5E2D9] text-[9px] font-bold px-2 py-0.5 rounded-full">
-                      🏫 Trường
+
+                    <div className="flex items-center gap-2">
+                      {isPending ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const reason = prompt('Nhập lý do từ chối (tùy chọn):');
+                              if (onRejectApplication) onRejectApplication(app.id, reason || undefined);
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-semibold border border-rose-500/25 transition-colors flex items-center gap-1"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Từ chối</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onApproveApplication) {
+                                onApproveApplication(app.id, app.roleType);
+                              }
+                            }}
+                            className="px-4 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Duyệt làm {app.roleType === 'specialist' ? 'Chuyên gia' : 'Bạn lắng nghe'}</span>
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                            Đã xử lý hồ sơ
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onApproveApplication) {
+                                onApproveApplication(app.id, app.roleType);
+                              }
+                            }}
+                            className="text-[10px] text-[#2A4228] dark:text-[#8BA888] underline font-bold"
+                          >
+                            Cập nhật lại
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Moderation / Master Feed Posts Tab Content */}
+      {activeTab !== 'mentor_applications' && (
+        <div className="space-y-4">
+          {filteredPosts.length === 0 ? (
+            <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A] text-xs">
+              Không tìm thấy lá thư nào phù hợp với bộ lọc hiện tại.
+            </div>
+          ) : (
+            filteredPosts.map(post => (
+              <div
+                key={post.id}
+                className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-5 space-y-3.5 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EFEB] dark:border-[#2C382A] pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-[#3A4036] dark:text-[#E8ECE6]">
+                      {getFormattedAuthorName(post)} ({post.schoolName})
                     </span>
-                  )}
-                  <span 
-                    className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]"
-                    title={formatFullDateTime(post.createdAt || post.id)}
-                  >
-                    • {formatRelativeTime(post.createdAt, post.timestamp, post.id)}
-                  </span>
+                    {post.isPublic ? (
+                      <span className="bg-[#5A6E58]/15 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                        🌐 Công khai
+                      </span>
+                    ) : (
+                      <span className="bg-[#F1F3EF] dark:bg-[#20281F] text-[#7E7A71] dark:text-[#8E9B8A] border border-[#E5E2D9] text-[9px] font-bold px-2 py-0.5 rounded-full">
+                        🏫 Trường
+                      </span>
+                    )}
+                    <span 
+                      className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]"
+                      title={formatFullDateTime(post.createdAt || post.id)}
+                    >
+                      • {formatRelativeTime(post.createdAt, post.timestamp, post.id)}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {post.status === 'flagged' && (
+                      <span className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                        ⚠️ AI Cảnh báo Từ ngữ
+                      </span>
+                    )}
+                    {post.imageUrl && (
+                      <span className="bg-[#8BA888]/20 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/40 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        📷 Có ảnh
+                      </span>
+                    )}
+                    <span className="bg-[#8BA888]/15 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                      {post.tags.join(', ')}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex gap-2">
-                  {post.status === 'flagged' && (
-                    <span className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      ⚠️ AI Cảnh báo Từ ngữ
-                    </span>
-                  )}
+                <div>
+                  <h3 className="font-serif italic font-bold text-base text-[#3A4036] dark:text-[#E8ECE6] mb-1">
+                    {post.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#7E7A71] dark:text-[#8E9B8A] whitespace-pre-line leading-relaxed">
+                    {post.content}
+                  </p>
+
+                  {/* Render Attached Image & Gemini Analysis */}
                   {post.imageUrl && (
-                    <span className="bg-[#8BA888]/20 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/40 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                      📷 Có ảnh đính kèm
-                    </span>
-                  )}
-                  <span className="bg-[#8BA888]/15 text-[#5A6E58] dark:text-[#8BA888] border border-[#8BA888]/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                    Chủ đề: {post.tags.join(', ')}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-serif italic font-bold text-base text-[#3A4036] dark:text-[#E8ECE6] mb-1">
-                  {post.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#7E7A71] dark:text-[#8E9B8A] whitespace-pre-line leading-relaxed">
-                  {post.content}
-                </p>
-
-                {/* Render Attached Image & Gemini Analysis in Moderator View */}
-                {post.imageUrl && (
-                  <div className="mt-3 p-3 bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl flex items-start gap-3">
-                    <img src={post.imageUrl} alt="Attachment" className="w-20 h-20 object-cover rounded-lg shrink-0 border" />
-                    <div className="text-xs text-[#5A6E58] dark:text-[#8BA888] space-y-1">
-                      <div className="font-bold flex items-center gap-1">
-                        <Sparkles className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
-                        Gemini Phân tích ảnh
+                    <div className="mt-3 p-3 bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl flex items-start gap-3">
+                      <img src={post.imageUrl} alt="Attachment" className="w-20 h-20 object-cover rounded-lg shrink-0 border" />
+                      <div className="text-xs text-[#5A6E58] dark:text-[#8BA888] space-y-1">
+                        <div className="font-bold flex items-center gap-1">
+                          <Sparkles className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
+                          Gemini Phân tích ảnh
+                        </div>
+                        {post.imageAnalysis?.summary && <p><strong>Tóm tắt:</strong> {post.imageAnalysis.summary}</p>}
+                        {post.imageAnalysis?.emotionalTone && <p><strong>Tông cảm xúc:</strong> {post.imageAnalysis.emotionalTone}</p>}
                       </div>
-                      {post.imageAnalysis?.summary && <p><strong>Tóm tắt:</strong> {post.imageAnalysis.summary}</p>}
-                      {post.imageAnalysis?.emotionalTone && <p><strong>Tông cảm xúc:</strong> {post.imageAnalysis.emotionalTone}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {activeTab === 'moderation' ? (
+                  <div className="pt-3 border-t border-[#F0EFEB] dark:border-[#2C382A] flex items-center justify-between">
+                    <span className="text-[11px] text-[#A4A095] dark:text-[#8E9B8A]">
+                      Trạng thái: <strong className="text-[#5A6E58] dark:text-[#8BA888]">{post.status}</strong>
+                    </span>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onRejectPost(post.id)}
+                        className="px-3 py-1.5 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-semibold border border-rose-500/30 transition-colors"
+                      >
+                        Từ chối & Nhắc nhở
+                      </button>
+                      <button
+                        onClick={() => onApprovePost(post.id)}
+                        className="px-4 py-1.5 rounded-full bg-[#5A6E58] hover:bg-[#4A5D48] text-white text-xs font-bold shadow-md transition-colors"
+                      >
+                        Duyệt hiển thị
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-3 border-t border-[#F0EFEB] dark:border-[#2C382A] space-y-3">
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#5A6E58] dark:text-[#8BA888]">
+                      Phản hồi Định hướng & Chữa lành
+                    </label>
+                    <div className="flex gap-2">
+                      <textarea
+                        value={replyInput[post.id] || ''}
+                        onChange={(e) => setReplyInput({ ...replyInput, [post.id]: e.target.value })}
+                        placeholder="Viết lời tư vấn chuyên môn ấm áp gửi đến bạn học sinh này..."
+                        rows={2}
+                        className="flex-1 bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl p-2.5 text-xs text-[#3A4036] dark:text-[#E8ECE6] focus:outline-none focus:border-[#5A6E58] resize-none"
+                      />
+                      <button
+                        onClick={() => handleSendMentorReply(post.id)}
+                        disabled={!replyInput[post.id]?.trim()}
+                        className="px-4 py-2 rounded-xl bg-[#5A6E58] hover:bg-[#4A5D48] text-white text-xs font-bold disabled:opacity-40 shrink-0 self-end shadow-sm"
+                      >
+                        Gửi tư vấn
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
+            ))
+          )}
+        </div>
+      )}
 
-              {activeTab === 'moderation' ? (
-                <div className="pt-3 border-t border-[#F0EFEB] dark:border-[#2C382A] flex items-center justify-between">
-                  <span className="text-[11px] text-[#A4A095] dark:text-[#8E9B8A]">
-                    Trạng thái: <strong className="text-[#5A6E58] dark:text-[#8BA888]">{post.status}</strong>
-                  </span>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onRejectPost(post.id)}
-                      className="px-3 py-1.5 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-semibold border border-rose-500/30 transition-colors"
-                    >
-                      Từ chối & Nhắc nhở
-                    </button>
-                    <button
-                      onClick={() => onApprovePost(post.id)}
-                      className="px-4 py-1.5 rounded-full bg-[#5A6E58] hover:bg-[#4A5D48] text-white text-xs font-bold shadow-md transition-colors"
-                    >
-                      Duyệt hiển thị
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="pt-3 border-t border-[#F0EFEB] dark:border-[#2C382A] space-y-3">
-                  <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-[#5A6E58] dark:text-[#8BA888]">
-                    Phản hồi Định hướng & Chữa lành dành cho Mentor
-                  </label>
-                  <div className="flex gap-2">
-                    <textarea
-                      value={replyInput[post.id] || ''}
-                      onChange={(e) => setReplyInput({ ...replyInput, [post.id]: e.target.value })}
-                      placeholder="Viết lời tư vấn chuyên môn ấm áp gửi đến bạn học sinh này..."
-                      rows={2}
-                      className="flex-1 bg-[#FAF9F6] dark:bg-[#20281F] border border-[#E5E2D9] dark:border-[#3A4738] rounded-xl p-2.5 text-xs text-[#3A4036] dark:text-[#E8ECE6] focus:outline-none focus:border-[#5A6E58] resize-none"
-                    />
-                    <button
-                      onClick={() => handleSendMentorReply(post.id)}
-                      disabled={!replyInput[post.id]?.trim()}
-                      className="px-4 py-2 rounded-xl bg-[#5A6E58] hover:bg-[#4A5D48] text-white text-xs font-bold disabled:opacity-40 shrink-0 self-end shadow-sm"
-                    >
-                      Gửi tư vấn
-                    </button>
-                  </div>
-                </div>
-              )}
+      {/* Modal View Image Proof */}
+      {previewImageUrl && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fade-in"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div 
+            className="bg-white dark:bg-[#1C251A] rounded-2xl p-4 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col space-y-3"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-sky-600" />
+                <span>Minh chứng Bằng cấp / Chứng chỉ</span>
+              </span>
+              <button
+                onClick={() => setPreviewImageUrl(null)}
+                className="p-1 rounded-lg text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
             </div>
-          ))
-        )}
-      </div>
+            <div className="flex-1 overflow-auto rounded-xl border flex items-center justify-center bg-black/10">
+              <img src={previewImageUrl} alt="Certificate Proof" className="max-w-full max-h-[65vh] object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

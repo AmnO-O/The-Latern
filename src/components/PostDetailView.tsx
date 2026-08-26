@@ -8,6 +8,7 @@ import {
   Sparkles, 
   Crown, 
   GraduationCap, 
+  Users,
   Bot, 
   User, 
   BadgeCheck, 
@@ -631,6 +632,20 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                           {reply.isOP && (
                             <span className="bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-500/40 text-[9px] font-bold px-1.5 py-0.2 rounded-md">
                               Chủ thớt
+                            </span>
+                          )}
+
+                          {reply.authorRole === 'peer_listener' && (
+                            <span className="bg-emerald-600/15 text-emerald-800 dark:text-emerald-300 border border-emerald-600/30 text-[9px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                              <Users className="w-2.5 h-2.5" />
+                              <span>Bạn lắng nghe</span>
+                            </span>
+                          )}
+
+                          {(reply.authorRole === 'expert' || reply.authorRole === 'counselor') && (
+                            <span className="bg-sky-600/15 text-sky-800 dark:text-sky-300 border border-sky-600/30 text-[9px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                              <GraduationCap className="w-2.5 h-2.5" />
+                              <span>Chuyên gia tâm lý</span>
                             </span>
                           )}
 

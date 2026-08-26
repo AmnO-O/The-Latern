@@ -149,13 +149,25 @@ export interface SchoolVerificationRecord {
 }
 
 export interface PeerMentorApplication {
+  id: string;
+  applicantId?: string;
+  applicantAnonId?: string;
+  applicantDisplayName?: string;
+  applicantEmail?: string;
+  roleType: 'peer_listener' | 'specialist';
   schoolId: string;
   schoolName: string;
-  status: 'pending' | 'approved';
+  isGlobalScope?: boolean;
+  status: 'pending' | 'approved' | 'rejected';
   appliedAt: number;
+  reviewedAt?: number;
   strengths: string[];
   motivation: string;
   commitmentAccepted: boolean;
+  specialty?: string;
+  qualificationTitle?: string;
+  certificateImageUrl?: string;
+  rejectionReason?: string;
 }
 
 export interface UserState {
@@ -183,9 +195,11 @@ export interface UserState {
   verifiedMajor?: string; // Chuyên ngành trích xuất từ thẻ AI (khóa cố định)
   verifiedCohort?: string; // Niên khóa trích xuất từ thẻ AI (khóa cố định)
   isIdentityLocked?: boolean; // Cờ khóa danh tính chống sửa đổi
-  // Peer Mentor / Campus Counselor status
+  // Peer Mentor / Specialist status
   peerMentorApplication?: PeerMentorApplication;
   isPeerMentor?: boolean;
+  isSpecialist?: boolean;
+  mentorRoleType?: 'peer_listener' | 'specialist';
   isCampusCounselor?: boolean;
   googleUser?: {
     uid: string;

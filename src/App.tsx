@@ -7,7 +7,8 @@ import {
   UserState, 
   Reply,
   LanternNotification,
-  HealingNote
+  HealingNote,
+  PeerMentorApplication
 } from './types';
 import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
@@ -323,6 +324,151 @@ export default function App() {
       console.warn('Failed to save notifications to localStorage:', e);
     }
   }, [notifications]);
+
+  // Mentor & Specialist Applications State
+  const [mentorApplications, setMentorApplications] = useState<PeerMentorApplication[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_mentor_applications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse mentor applications from localStorage:', e);
+    }
+    return [
+      {
+        id: 'app-spec-1',
+        applicantId: 'usr-spec-hnue',
+        applicantDisplayName: 'Nguyễn Hoàng Minh',
+        applicantEmail: 'minh.nh.psych@hnue.edu.vn',
+        roleType: 'specialist',
+        schoolId: 'hnue',
+        schoolName: 'Đại học Sư phạm Hà Nội',
+        isGlobalScope: true,
+        status: 'pending',
+        appliedAt: Date.now() - 3600000 * 5,
+        strengths: ['Áp lực học tập & Kỳ vọng gia đình', 'Khủng hoảng định hướng ngành nghề', 'Cô đơn & Trầm lắng cảm xúc'],
+        motivation: 'Tôi là Thạc sĩ Tâm lý học lâm sàng với 4 năm kinh nghiệm tham vấn học đường. Tôi mong muốn đồng hành và hỗ trợ giải tỏa áp lực tâm lý cho học sinh sinh viên.',
+        commitmentAccepted: true,
+        qualificationTitle: 'Thạc sĩ Tâm lý học Lâm sàng',
+        specialty: 'Tham vấn khủng hoảng & Rối loạn cảm xúc học đường',
+        certificateImageUrl: 'https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        id: 'app-peer-2',
+        applicantId: 'usr-peer-neu',
+        applicantAnonId: '#318',
+        applicantDisplayName: 'Bạn Khóa Trên K21',
+        roleType: 'peer_listener',
+        schoolId: 'neu',
+        schoolName: 'Đại học Kinh Tế Quốc Dân',
+        isGlobalScope: false,
+        status: 'approved',
+        appliedAt: Date.now() - 3600000 * 24,
+        strengths: ['Khủng hoảng định hướng ngành nghề', 'Áp lực học tập & Kỳ vọng gia đình'],
+        motivation: 'Mình từng bế tắc giữa học kinh tế và đam mê nghệ thuật. Rất mong được lắng nghe các bạn khóa dưới trải lòng mà không phán xét.',
+        commitmentAccepted: true
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_mentor_applications', JSON.stringify(mentorApplications));
+    } catch (e) {
+      console.warn('Failed to save mentor applications to localStorage:', e);
+    }
+  }, [mentorApplications]);
+
+  const handleSaveMentorApplication = (newApp: PeerMentorApplication) => {
+    setMentorApplications(prev => {
+      const idx = prev.findIndex(a => a.id === newApp.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = newApp;
+        return updated;
+      }
+      return [newApp, ...prev];
+    });
+  };
+
+  const handleApproveMentorApplication = (appId: string, role: 'peer_listener' | 'specialist') => {
+    setMentorApplications(prev => prev.map(a => {
+      if (a.id === appId) {
+        return {
+          ...a,
+          status: 'approved',
+          reviewedAt: Date.now()
+        };
+      }
+      return a;
+    }));
+
+    // If current user is the applicant, update role in userState
+    setUserState(prev => {
+      if (prev.peerMentorApplication?.id === appId || (!prev.peerMentorApplication && prev.userRole !== 'admin_moderator')) {
+        const updatedApp = {
+          ...(prev.peerMentorApplication || {}),
+          id: appId,
+          status: 'approved' as const,
+          roleType: role
+        } as PeerMentorApplication;
+
+        return {
+          ...prev,
+          peerMentorApplication: updatedApp,
+          isPeerMentor: true,
+          isSpecialist: role === 'specialist',
+          mentorRoleType: role,
+          userRole: role === 'specialist' ? 'mentor' : 'peer_listener'
+        };
+      }
+      return prev;
+    });
+
+    // Send notification
+    const newNotif: LanternNotification = {
+      id: `notif-app-${Date.now()}`,
+      type: 'counselor_response',
+      postId: '',
+      postTitle: 'Hồ sơ đồng hành tâm lý đã được phê duyệt',
+      senderName: 'Ban Quản Trị HealSpace',
+      message: `Chúc mừng bạn! Hồ sơ ${role === 'specialist' ? 'Chuyên gia tâm lý' : 'Bạn lắng nghe'} của bạn đã được duyệt thành công. Bạn đã có huy hiệu uy tín khi phản hồi thư.`,
+      createdAt: Date.now(),
+      isRead: false
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const handleRejectMentorApplication = (appId: string, reason?: string) => {
+    setMentorApplications(prev => prev.map(a => {
+      if (a.id === appId) {
+        return {
+          ...a,
+          status: 'rejected',
+          rejectionReason: reason || 'Chưa đủ điều kiện xác thực',
+          reviewedAt: Date.now()
+        };
+      }
+      return a;
+    }));
+
+    // If current user is the applicant
+    setUserState(prev => {
+      if (prev.peerMentorApplication?.id === appId) {
+        return {
+          ...prev,
+          peerMentorApplication: {
+            ...prev.peerMentorApplication,
+            status: 'rejected',
+            rejectionReason: reason
+          }
+        };
+      }
+      return prev;
+    });
+  };
 
   // User State with local cache restore
   const [userState, setUserState] = useState<UserState>(() => {
@@ -1718,6 +1864,9 @@ export default function App() {
                 replies: [...p.replies, replyObj]
               } : p));
             }}
+            applications={mentorApplications}
+            onApproveApplication={handleApproveMentorApplication}
+            onRejectApplication={handleRejectMentorApplication}
           />
         )}
       </main>
@@ -1836,22 +1985,9 @@ export default function App() {
         isOpen={isPeerMentorModalOpen}
         onClose={() => setIsPeerMentorModalOpen(false)}
         userState={userState}
+        setUserState={setUserState}
         schools={schools}
-        onSubmitApplication={(application) => {
-          setUserState(prev => {
-            const updated: UserState = {
-              ...prev,
-              isPeerMentor: true,
-              peerMentorApplication: application,
-              userRole: prev.userRole === 'student' ? 'peer_listener' : prev.userRole
-            };
-            try {
-              localStorage.setItem('lantern_user_state', JSON.stringify(updated));
-            } catch (e) {}
-            return updated;
-          });
-          setIsPeerMentorModalOpen(false);
-        }}
+        onSaveApplication={handleSaveMentorApplication}
       />
 
       <EmergencyDrawer
