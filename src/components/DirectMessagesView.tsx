@@ -25,7 +25,8 @@ import {
   Copy,
   Pencil,
   Undo2,
-  MinusCircle
+  MinusCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { DirectThread, DirectMessage } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
@@ -43,6 +44,8 @@ interface DirectMessagesViewProps {
   onDeleteMessageForMe?: (threadId: string, messageId: string) => void;
   onEditMessage?: (threadId: string, messageId: string, newText: string) => void;
   onClearThreadHistory?: (threadId: string) => void;
+  onOpenRatingModal?: (listenerName: string, threadId?: string) => void;
+  onOpenReportModal?: (listenerName: string, threadId?: string) => void;
 }
 
 export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
@@ -57,7 +60,9 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
   onRevokeMessage,
   onDeleteMessageForMe,
   onEditMessage,
-  onClearThreadHistory
+  onClearThreadHistory,
+  onOpenRatingModal,
+  onOpenReportModal
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(
     activeThreadId || threads[0]?.id || ''
@@ -506,8 +511,38 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                   {isHeaderMenuOpen && (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1E261D] border border-[#E5E2D9] dark:border-[#3A4738] rounded-2xl shadow-xl py-1.5 z-40 text-xs text-[#3A4036] dark:text-[#E8ECE6] animate-fade-in"
+                      className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1E261D] border border-[#E5E2D9] dark:border-[#3A4738] rounded-2xl shadow-xl py-1.5 z-40 text-xs text-[#3A4036] dark:text-[#E8ECE6] animate-fade-in"
                     >
+                      {/* Healing Rating Button */}
+                      {onOpenRatingModal && currentThread.id !== 'thread-ai-companion' && (
+                        <button
+                          onClick={() => {
+                            setIsHeaderMenuOpen(false);
+                            onOpenRatingModal(currentThread.peerName, currentThread.id);
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium"
+                        >
+                          <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                          <span>Đánh giá ấm áp (Healing Rating)</span>
+                        </button>
+                      )}
+
+                      {/* Report Listener Button */}
+                      {onOpenReportModal && currentThread.id !== 'thread-ai-companion' && (
+                        <button
+                          onClick={() => {
+                            setIsHeaderMenuOpen(false);
+                            onOpenReportModal(currentThread.peerName, currentThread.id);
+                          }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400"
+                        >
+                          <ShieldAlert className="w-4 h-4 text-rose-600" />
+                          <span>Báo cáo vi phạm</span>
+                        </button>
+                      )}
+
+                      <div className="my-1 border-t border-[#E5E2D9] dark:border-[#3A4738]"></div>
+
                       {onClearThreadHistory && (
                         <button
                           onClick={() => {

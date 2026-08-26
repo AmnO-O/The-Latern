@@ -8,7 +8,9 @@ import {
   Reply,
   LanternNotification,
   HealingNote,
-  PeerMentorApplication
+  PeerMentorApplication,
+  ListenerRatingFeedback,
+  ListenerReport
 } from './types';
 import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
@@ -31,6 +33,8 @@ import { CampusGlobeView } from './components/CampusGlobeView';
 import { PeerMentorModal } from './components/PeerMentorModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { HealingFeedbackModal } from './components/HealingFeedbackModal';
+import { ListenerRatingModal } from './components/ListenerRatingModal';
+import { ListenerReportModal } from './components/ListenerReportModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
@@ -217,6 +221,112 @@ export default function App() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [sharingPost, setSharingPost] = useState<Post | null>(null);
 
+  // Healing Rating Modal & Report Modal State
+  const [ratingTarget, setRatingTarget] = useState<{ listenerName: string; threadId?: string; postId?: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ listenerName: string; threadId?: string; postId?: string } | null>(null);
+
+  // Listener Ratings State
+  const [listenerRatings, setListenerRatings] = useState<ListenerRatingFeedback[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_listener_ratings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse listener ratings:', e);
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_listener_ratings', JSON.stringify(listenerRatings));
+    } catch (e) {
+      console.warn('Failed to save listener ratings:', e);
+    }
+  }, [listenerRatings]);
+
+  // Listener Reports State
+  const [listenerReports, setListenerReports] = useState<ListenerReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_listener_reports');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse listener reports:', e);
+    }
+    return [
+      {
+        id: 'rep-demo-1',
+        reportedListenerName: 'Người Lắng Nghe #912',
+        reporterAnonId: '#318',
+        reason: 'privacy_invasion',
+        reasonDetail: 'Người này liên tục gặng hỏi tài khoản Facebook cá nhân và số Zalo khi mình đang tâm sự chuyện gia đình.',
+        status: 'pending',
+        createdAt: Date.now() - 7200000
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_listener_reports', JSON.stringify(listenerReports));
+    } catch (e) {
+      console.warn('Failed to save listener reports:', e);
+    }
+  }, [listenerReports]);
+
+  const handleSubmitRating = (rating: ListenerRatingFeedback) => {
+    setListenerRatings(prev => [rating, ...prev]);
+
+    // Send toast / notification to recipient if applicable
+    const newNotif: LanternNotification = {
+      id: `notif-rating-${Date.now()}`,
+      type: 'hug',
+      postId: rating.postId || '',
+      postTitle: 'Nhận được đánh giá ấm áp (Healing Rating)',
+      senderName: rating.senderAnonId,
+      message: `Bạn vừa nhận được một phản hồi "${
+        rating.ratingType === 'warm_heart' ? 'Ấm áp & Chân thành' :
+        rating.ratingType === 'deep_empathy' ? 'Thấu cảm sâu sắc' :
+        rating.ratingType === 'helpful' ? 'Lời khuyên hữu ích' : 'Vô cùng biết ơn'
+      }" từ một người bạn bạn đã lắng nghe. ❤️`,
+      createdAt: Date.now(),
+      isRead: false
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const handleSubmitReport = (report: ListenerReport) => {
+    setListenerReports(prev => [report, ...prev]);
+  };
+
+  const handleResolveReport = (reportId: string, action: 'ban_listener' | 'dismiss') => {
+    setListenerReports(prev => prev.map(r => {
+      if (r.id === reportId) {
+        return {
+          ...r,
+          status: action === 'ban_listener' ? 'resolved' : 'dismissed'
+        };
+      }
+      return r;
+    }));
+
+    if (action === 'ban_listener') {
+      const rep = listenerReports.find(r => r.id === reportId);
+      if (rep) {
+        // Revoke peer mentor application status if found
+        setMentorApplications(prev => prev.map(a => {
+          if (a.applicantDisplayName === rep.reportedListenerName || a.applicantAnonId === rep.reportedListenerName) {
+            return {
+              ...a,
+              status: 'rejected',
+              rejectionReason: 'Bị tước quyền do vi phạm quy chuẩn an toàn cộng đồng'
+            };
+          }
+          return a;
+        }));
+      }
+    }
+  };
+
   // Healing Notes & Feedback State
   const [healingNotes, setHealingNotes] = useState<HealingNote[]>(() => {
     try {
@@ -353,7 +463,9 @@ export default function App() {
         commitmentAccepted: true,
         qualificationTitle: 'Thạc sĩ Tâm lý học Lâm sàng',
         specialty: 'Tham vấn khủng hoảng & Rối loạn cảm xúc học đường',
-        certificateImageUrl: 'https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=600&q=80'
+        certificateImageUrl: 'https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=600&q=80',
+        ethicsQuestion: 'Một bạn ẩn danh tâm sự đang chịu áp lực nặng nề và có suy nghĩ trốn tránh thực tại hoặc làm điều tiêu cực, nhưng nài nỉ bạn "xin hãy giữ bí mật tuyệt đối và đừng nói với bất kỳ ai, kể cả thầy cô hay chuyên gia". Bạn sẽ phân định ranh giới giữa "Tôn trọng sự riêng tư" và "Bảo vệ an toàn tính mạng" như thế nào?',
+        ethicsAnswer: 'Nguyên tắc bất di bất dịch của tư vấn tâm lý là an toàn tính mạng luôn cao hơn bí mật đời tư. Mình sẽ nhẹ nhàng giải thích cho bạn hiểu rằng mình rất trân trọng sự tin tưởng của bạn, nhưng vì yêu quý và mong bạn an toàn, mình không thể để bạn đối mặt nguy hiểm một mình và sẽ chủ động kết nối đường dây nóng chuyên môn hỗ trợ kịp thời.'
       },
       {
         id: 'app-peer-2',
@@ -368,7 +480,9 @@ export default function App() {
         appliedAt: Date.now() - 3600000 * 24,
         strengths: ['Khủng hoảng định hướng ngành nghề', 'Áp lực học tập & Kỳ vọng gia đình'],
         motivation: 'Mình từng bế tắc giữa học kinh tế và đam mê nghệ thuật. Rất mong được lắng nghe các bạn khóa dưới trải lòng mà không phán xét.',
-        commitmentAccepted: true
+        commitmentAccepted: true,
+        ethicsQuestion: 'Khi lắng nghe một bạn có quan điểm sống, lối sống hoặc hành động hoàn toàn trái ngược với hệ giá trị đạo đức cá nhân của bạn, bạn sẽ làm gì để giữ được thái độ lắng nghe trung lập, thấu cảm mà không áp đặt hay phán xét?',
+        ethicsAnswer: 'Mỗi người sinh ra và lớn lên trong một hoàn cảnh và áp lực khác nhau. Khi mang vai trò người lắng nghe, mình gác lại cái tôi và định kiến riêng để tập trung vào nỗi đau và cảm xúc bên trong của bạn ấy, giúp bạn có một khoảng không an toàn để trút bỏ gánh nặng.'
       }
     ];
   });
@@ -1793,6 +1907,12 @@ export default function App() {
             onOpenLogin={handleGoogleSignIn}
             onOpenPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             onConnectWithAuthor={handleConnectWithAuthor}
+            onOpenRatingModal={(listenerName, postId) => {
+              setRatingTarget({ listenerName, postId });
+            }}
+            onOpenReportModal={(listenerName, postId) => {
+              setReportTarget({ listenerName, postId });
+            }}
             isAuthor={isUserAuthor(selectedPost)}
           />
         )}
@@ -1811,6 +1931,12 @@ export default function App() {
             onDeleteMessageForMe={handleDeleteMessageForMe}
             onEditMessage={handleEditMessage}
             onClearThreadHistory={handleClearThreadHistory}
+            onOpenRatingModal={(listenerName, threadId) => {
+              setRatingTarget({ listenerName, threadId });
+            }}
+            onOpenReportModal={(listenerName, threadId) => {
+              setReportTarget({ listenerName, threadId });
+            }}
           />
         )}
 
@@ -1867,6 +1993,8 @@ export default function App() {
             applications={mentorApplications}
             onApproveApplication={handleApproveMentorApplication}
             onRejectApplication={handleRejectMentorApplication}
+            reports={listenerReports}
+            onResolveReport={handleResolveReport}
           />
         )}
       </main>
@@ -2042,6 +2170,32 @@ export default function App() {
         currentSchool={selectedSchool}
         userState={userState}
       />
+
+      {/* Healing Rating Feedback Modal */}
+      {ratingTarget && (
+        <ListenerRatingModal
+          isOpen={!!ratingTarget}
+          onClose={() => setRatingTarget(null)}
+          listenerName={ratingTarget.listenerName}
+          threadId={ratingTarget.threadId}
+          postId={ratingTarget.postId}
+          senderAnonId={userState.displayName || 'Bạn Ẩn Danh'}
+          onSubmitRating={handleSubmitRating}
+        />
+      )}
+
+      {/* Listener Report / Flag Modal */}
+      {reportTarget && (
+        <ListenerReportModal
+          isOpen={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          listenerName={reportTarget.listenerName}
+          threadId={reportTarget.threadId}
+          postId={reportTarget.postId}
+          reporterAnonId={userState.displayName || 'Bạn Ẩn Danh'}
+          onSubmitReport={handleSubmitReport}
+        />
+      )}
     </div>
   );
 }

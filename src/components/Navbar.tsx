@@ -348,12 +348,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 font-bold'
                 : 'text-[var(--text-muted)] hover:bg-[#EAF0E8]/70 dark:hover:bg-white/5 hover:text-[var(--text-primary)]'
             }`}
-            title="Đăng ký làm Người Lắng Nghe Đồng Hành (Peer Mentor)"
+            title="Đăng ký Đồng Hành (Người lắng nghe / Chuyên gia)"
           >
             <div className="flex items-center gap-3.5">
               <HeartHandshake className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               {!isCollapsed && (
-                <span>{userState.isPeerMentor ? 'Bạn là Peer Mentor' : 'Đăng ký Peer Mentor'}</span>
+                <span>{userState.isPeerMentor ? (userState.isSpecialist ? 'Chuyên gia tâm lý' : 'Người lắng nghe') : 'Đăng ký Đồng Hành'}</span>
               )}
             </div>
           </button>

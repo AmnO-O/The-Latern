@@ -28,7 +28,8 @@ import {
   Music,
   Minimize2,
   Mail,
-  FileEdit
+  FileEdit,
+  ShieldAlert
 } from 'lucide-react';
 import { Post, Reply, UserState } from '../types';
 import { ambientAudio } from '../lib/audioSynthesizer';
@@ -66,6 +67,8 @@ interface PostDetailViewProps {
   onOpenLogin?: () => void;
   onOpenPeerMentorModal?: () => void;
   onConnectWithAuthor?: (post: Post) => void;
+  onOpenRatingModal?: (listenerName: string, postId?: string) => void;
+  onOpenReportModal?: (listenerName: string, postId?: string) => void;
   isAuthor?: boolean;
 }
 
@@ -86,6 +89,8 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   onOpenLogin,
   onOpenPeerMentorModal,
   onConnectWithAuthor,
+  onOpenRatingModal,
+  onOpenReportModal,
   isAuthor
 }) => {
   const [replyInput, setReplyInput] = useState('');
@@ -676,6 +681,28 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                         <HeartHandshake className="w-3 h-3" />
                         <span>{reply.hugsCount || 0}</span>
                       </button>
+
+                      {/* Healing Rating Button on Reply */}
+                      {onOpenRatingModal && (reply.authorRole === 'peer_listener' || reply.authorRole === 'expert' || reply.authorRole === 'counselor') && (
+                        <button
+                          onClick={() => onOpenRatingModal(reply.authorDisplayName || reply.authorName, post.id)}
+                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                          title="Thả tim đánh giá ấm áp cho người lắng nghe"
+                        >
+                          <Heart className="w-3.5 h-3.5 fill-rose-500/30 text-rose-500 hover:fill-rose-500" />
+                        </button>
+                      )}
+
+                      {/* Report Listener Button on Reply */}
+                      {onOpenReportModal && (
+                        <button
+                          onClick={() => onOpenReportModal(reply.authorDisplayName || reply.authorName, post.id)}
+                          className="p-1 rounded-lg text-[#8E9B8A] hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+                          title="Báo cáo vi phạm (nếu quấy rối, công kích, xin info)"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       <button
                         onClick={() => handleInitiateReply(reply)}

@@ -168,6 +168,32 @@ export interface PeerMentorApplication {
   qualificationTitle?: string;
   certificateImageUrl?: string;
   rejectionReason?: string;
+  quizScore?: number; // Điểm Empathy Mini-Quiz (nếu có)
+  quizPassed?: boolean;
+  ethicsQuestion?: string; // Câu hỏi mở về đạo đức/tư duy xã hội/tình huống lắng nghe
+  ethicsAnswer?: string; // Câu trả lời luận ngắn của ứng viên để admin duyệt
+}
+
+export interface ListenerRatingFeedback {
+  threadId?: string;
+  postId?: string;
+  listenerName: string;
+  senderAnonId: string;
+  ratingType: 'warm_heart' | 'deep_empathy' | 'grateful' | 'helpful';
+  comment?: string;
+  createdAt: number;
+}
+
+export interface ListenerReport {
+  id: string;
+  threadId?: string;
+  postId?: string;
+  reportedListenerName: string;
+  reporterAnonId: string;
+  reason: 'privacy_invasion' | 'harassment_toxic' | 'unsolicited_advice' | 'inappropriate_contact' | 'other';
+  reasonDetail: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: number;
 }
 
 export interface UserState {

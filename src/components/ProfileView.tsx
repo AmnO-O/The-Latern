@@ -21,7 +21,11 @@ import {
   AlertTriangle,
   Gavel,
   UserCog,
-  Bookmark
+  Bookmark,
+  Users,
+  UserCheck,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { Post, UserState, School } from '../types';
 import { PostCard } from './PostCard';
@@ -490,62 +494,90 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Peer Mentor / Listener Card */}
-      <div className="bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] glass-panel rounded-3xl p-6 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
+      <div className="bg-[var(--bg-card)] border border-[#C8D2C4] dark:border-[#3A4738] glass-panel rounded-3xl p-5 sm:p-6 space-y-3.5 shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl shrink-0 shadow-xs">
-              🌿
+            <div className="w-10 h-10 rounded-2xl bg-[#2A4228] text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
+              {userState.isSpecialist ? (
+                <GraduationCap className="w-5 h-5 text-sky-300" />
+              ) : (
+                <Users className="w-5 h-5 text-emerald-300" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
-                  Người Lắng Nghe Đồng Hành (Peer Mentor)
+                  Vai trò Đồng Hành
                 </h3>
                 {userState.isPeerMentor && (
-                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
-                    Đã Kích Hoạt
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>{userState.mentorRoleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</span>
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A]">
-                Đồng hành, lắng nghe và giải tỏa rào cản tâm lý học đường & khoảng cách thế hệ gia đình
+                Lắng nghe, tư vấn và hỗ trợ bạn bè học đường vượt qua khó khăn.
               </p>
             </div>
           </div>
         </div>
 
         {userState.isPeerMentor ? (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <span>Huy hiệu Người Lắng Nghe Đồng Hành Đang Hoạt Động</span>
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300">
+              <UserCheck className="w-4 h-4 text-emerald-600" />
+              <span>Huy hiệu {userState.mentorRoleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'} đã kích hoạt</span>
             </div>
-            <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed">
-              Bạn có quyền gửi lời an ủi và hồi âm cho các lá thư trong <strong>Hộp Thư Tư Vấn</strong> của trường. Cảm ơn sự tận tâm và thấu cảm của bạn đối với cộng đồng sinh viên!
+            <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed text-[11px]">
+              Bạn có quyền gửi phản hồi tư vấn cho các lá thư trong <strong>Hộp Thư Tư Vấn</strong> của trường. Cảm ơn sự đồng hành và thấu cảm của bạn!
             </p>
           </div>
         ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
-          <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
-              <span>⏳ Đơn ứng tuyển Peer Mentor đang được xem xét</span>
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300">
+              <Clock className="w-4 h-4 text-amber-600" />
+              <span>Hồ sơ đang chờ Admin duyệt</span>
             </div>
-            <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
-              Ban điều phối và cố vấn trường đang xem xét kinh nghiệm và thông điệp của bạn. Bạn sẽ nhận được thông báo khi được phê duyệt.
+            <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed text-[11px]">
+              Đơn đăng ký <strong>{userState.peerMentorApplication.roleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</strong> của bạn đang được xem xét. Bạn sẽ nhận được thông báo ngay khi hồ sơ được duyệt.
             </p>
           </div>
+        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'rejected' ? (
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 text-xs space-y-2">
+            <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300">
+              <X className="w-4 h-4 text-rose-600" />
+              <span>Hồ sơ chưa được duyệt</span>
+            </div>
+            {userState.peerMentorApplication.rejectionReason && (
+              <p className="text-rose-900/90 dark:text-rose-200/90 text-[11px] leading-relaxed">
+                <strong>Lý do:</strong> {userState.peerMentorApplication.rejectionReason}
+              </p>
+            )}
+            {onOpenPeerMentorModal && (
+              <button
+                type="button"
+                onClick={onOpenPeerMentorModal}
+                className="mt-1 px-4 py-1.5 rounded-full bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Nộp lại hồ sơ</span>
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
             <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] leading-relaxed">
-              Bạn là sinh viên nhiệt huyết, thấu hiểu và muốn giúp đỡ các bạn đồng trang lứa vượt qua áp lực gia đình hay rào cản tâm lý? Hãy gia nhập đội ngũ Peer Mentor!
+              Bạn muốn trở thành Người lắng nghe hoặc Chuyên gia tâm lý đồng hành cùng các bạn học sinh? Hãy gửi hồ sơ để tham gia!
             </p>
             {onOpenPeerMentorModal && (
               <button
                 type="button"
                 onClick={onOpenPeerMentorModal}
-                className="px-4 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto justify-center"
+                className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all w-full sm:w-auto justify-center"
               >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>Đăng ký Peer Mentor</span>
+                <Users className="w-4 h-4" />
+                <span>Đăng ký Đồng Hành</span>
               </button>
             )}
           </div>

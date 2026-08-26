@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Sparkles, 
   Users, 
   GraduationCap, 
   Globe, 
@@ -11,9 +10,18 @@ import {
   ShieldCheck, 
   Clock, 
   FileText,
-  UserCheck
+  UserCheck,
+  X,
+  Sparkles,
+  ShieldAlert,
+  AlertTriangle,
+  Heart,
+  Ban,
+  Brain,
+  MessageSquareHeart,
+  Lightbulb
 } from 'lucide-react';
-import { Post, PeerMentorApplication } from '../types';
+import { Post, PeerMentorApplication, ListenerReport } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getFormattedAuthorName } from '../lib/authorUtils';
 
@@ -25,6 +33,8 @@ interface MentorDashboardProps {
   applications?: PeerMentorApplication[];
   onApproveApplication?: (applicationId: string, role: 'peer_listener' | 'specialist') => void;
   onRejectApplication?: (applicationId: string, reason?: string) => void;
+  reports?: ListenerReport[];
+  onResolveReport?: (reportId: string, action: 'ban_listener' | 'dismiss') => void;
 }
 
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
@@ -34,16 +44,23 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   onMentorReplyToPost,
   applications = [],
   onApproveApplication,
-  onRejectApplication
+  onRejectApplication,
+  reports = [],
+  onResolveReport
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_applications' | 'all_master_feed' | 'mentor_queue'>('mentor_applications');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_applications' | 'reports_queue' | 'all_master_feed' | 'mentor_queue'>('mentor_applications');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'public' | 'campus'>('all');
   const [appStatusFilter, setAppStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [replyInput, setReplyInput] = useState<{ [postId: string]: string }>({});
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  
+  // Rejection modal state
+  const [rejectingAppId, setRejectingAppId] = useState<string | null>(null);
+  const [customRejectReason, setCustomRejectReason] = useState('');
 
   const pendingAppsCount = applications.filter(a => a.status === 'pending').length;
+  const pendingReportsCount = reports.filter(r => r.status === 'pending').length;
   const pendingPostsCount = posts.filter(p => p.status === 'flagged' || p.status === 'pending_review').length;
 
   // Filter applications
@@ -82,6 +99,23 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     setReplyInput({ ...replyInput, [postId]: '' });
   };
 
+  const handleConfirmReject = () => {
+    if (!rejectingAppId) return;
+    const reason = customRejectReason.trim() || 'Hồ sơ chưa đáp ứng đủ tiêu chí xác thực';
+    if (onRejectApplication) {
+      onRejectApplication(rejectingAppId, reason);
+    }
+    setRejectingAppId(null);
+    setCustomRejectReason('');
+  };
+
+  const rejectPresets = [
+    'Ảnh bằng cấp/chứng chỉ chưa rõ nét, vui lòng gửi lại ảnh rõ hơn',
+    'Cần bổ sung bằng cấp chuyên ngành tâm lý hoặc tham vấn học đường',
+    'Thông tin giới thiệu chưa đầy đủ tiêu chí xác thực',
+    'Chưa đủ điều kiện xác thực vai trò chuyên gia tâm lý'
+  ];
+
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 space-y-6 min-h-screen pb-24">
       {/* Header */}
@@ -111,6 +145,21 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             {pendingAppsCount > 0 && (
               <span className="bg-amber-500 text-black text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
                 {pendingAppsCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reports_queue')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+              activeTab === 'reports_queue' ? 'bg-rose-700 text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Báo Cáo Vi Phạm</span>
+            {pendingReportsCount > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold animate-pulse">
+                {pendingReportsCount}
               </span>
             )}
           </button>
@@ -297,6 +346,42 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         </div>
                       )}
 
+                      {/* Empathy Mini-Quiz Score Badge (nếu có từ bản cũ) */}
+                      {app.quizScore !== undefined && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#182217] dark:text-[#E8ECE6]">Empathy Quiz:</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            app.quizPassed
+                              ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                              : 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30'
+                          }`}>
+                            <Sparkles className="w-3 h-3" />
+                            <span>Đạt {app.quizScore}/3 câu xử lý thấu cảm</span>
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Open-ended Ethics & Mindset Essay Answer */}
+                      {app.ethicsQuestion && (
+                        <div className="bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-500/30 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-amber-950 dark:text-amber-300 font-bold text-[11px]">
+                            <Brain className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>Câu hỏi mở về Tư duy & Đạo đức (Ethics & Mindset):</span>
+                          </div>
+                          <p className="text-[11px] text-[#485346] dark:text-[#E8ECE6] font-medium leading-snug">
+                            ❓ "{app.ethicsQuestion}"
+                          </p>
+                          <div className="mt-1 bg-white dark:bg-[#1A2218] p-2.5 rounded-lg border border-amber-500/20">
+                            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 block mb-0.5">
+                              💡 Câu trả lời / Góc nhìn của ứng viên:
+                            </span>
+                            <p className="text-[11px] text-[#182217] dark:text-[#E8ECE6] leading-relaxed italic">
+                              "{app.ethicsAnswer || '(Chưa điền câu trả lời)'}"
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {app.strengths && app.strengths.length > 0 && (
                         <div>
                           <span className="font-bold text-[#182217] dark:text-[#E8ECE6] block mb-1">Chủ đề hỗ trợ:</span>
@@ -358,7 +443,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   {/* Actions Footer */}
                   <div className="pt-2.5 border-t border-[#F0EFEB] dark:border-[#2C382A] flex items-center justify-between flex-wrap gap-2">
                     <span className="text-[10px] text-[#8E9B8A]">
-                      Mã hồ sơ: <code className="text-[#3A4036] dark:text-[#E8ECE6]">{app.id}</code>
+                      Mã: <code className="text-[#3A4036] dark:text-[#E8ECE6]">{app.id}</code>
                     </span>
 
                     <div className="flex items-center gap-2">
@@ -367,8 +452,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              const reason = prompt('Nhập lý do từ chối (tùy chọn):');
-                              if (onRejectApplication) onRejectApplication(app.id, reason || undefined);
+                              setRejectingAppId(app.id);
+                              setCustomRejectReason('');
                             }}
                             className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-semibold border border-rose-500/25 transition-colors flex items-center gap-1"
                           >
@@ -386,7 +471,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                             className="px-4 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Duyệt làm {app.roleType === 'specialist' ? 'Chuyên gia' : 'Bạn lắng nghe'}</span>
+                            <span>Duyệt làm {app.roleType === 'specialist' ? 'Chuyên gia' : 'Người lắng nghe'}</span>
                           </button>
                         </>
                       ) : (
@@ -403,7 +488,17 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                             }}
                             className="text-[10px] text-[#2A4228] dark:text-[#8BA888] underline font-bold"
                           >
-                            Cập nhật lại
+                            Duyệt lại
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectingAppId(app.id);
+                              setCustomRejectReason('');
+                            }}
+                            className="text-[10px] text-rose-600 underline font-bold"
+                          >
+                            Từ chối lại
                           </button>
                         </div>
                       )}
@@ -416,8 +511,109 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </div>
       )}
 
+      {/* Reports Queue Tab Content */}
+      {activeTab === 'reports_queue' && (
+        <div className="space-y-3.5">
+          {reports.length === 0 ? (
+            <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A] text-xs space-y-1">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2 opacity-80" />
+              <p className="font-bold text-sm text-[#182217] dark:text-[#E8ECE6]">Không có báo cáo vi phạm nào!</p>
+              <p className="text-[11px]">Cộng đồng Người Lắng Nghe đang hoạt động an toàn, thấu cảm và tuân thủ chuẩn mực.</p>
+            </div>
+          ) : (
+            reports.map(rep => {
+              const isPending = rep.status === 'pending';
+              const isResolved = rep.status === 'resolved';
+
+              return (
+                <div
+                  key={rep.id}
+                  className="bg-[var(--bg-card)] border border-rose-500/30 dark:border-rose-950/50 glass-panel rounded-2xl p-4.5 sm:p-5 space-y-3 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EFEB] dark:border-[#2C382A] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        <span>Báo cáo: {rep.reportedListenerName}</span>
+                      </span>
+                      <span className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                        từ {rep.reporterAnonId}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="text-[10px] text-[#8E9B8A]"
+                        title={formatFullDateTime(rep.createdAt)}
+                      >
+                        {formatRelativeTime(rep.createdAt)}
+                      </span>
+                      {isPending ? (
+                        <span className="bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ⏳ Chờ xử lý
+                        </span>
+                      ) : isResolved ? (
+                        <span className="bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ✓ Đã xử lý (Tước quyền/Kỷ luật)
+                        </span>
+                      ) : (
+                        <span className="bg-black/10 text-gray-700 dark:text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ✕ Bỏ qua (Không vi phạm)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Report Detail */}
+                  <div className="bg-rose-50/50 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-500/20 space-y-1 text-xs">
+                    <div className="font-bold text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>
+                        {rep.reason === 'privacy_invasion' && 'Xin thông tin nhạy cảm / Đòi Facebook, SĐT riêng'}
+                        {rep.reason === 'harassment_toxic' && 'Quấy rối, công kích hoặc dùng từ ngữ thô bạo'}
+                        {rep.reason === 'unsolicited_advice' && 'Đưa lời khuyên y khoa/tâm lý sai lệch, nguy hiểm'}
+                        {rep.reason === 'inappropriate_contact' && 'Hành vi gạ gẫm tình cảm hoặc mục đích không trong sáng'}
+                        {rep.reason === 'other' && 'Hành vi vi phạm quy chuẩn cộng đồng khác'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#2C382A] dark:text-[#E8ECE6] leading-relaxed italic bg-white dark:bg-[#1A2218] p-2 rounded-lg border border-black/5 dark:border-white/5">
+                      "{rep.reasonDetail}"
+                    </p>
+                  </div>
+
+                  {/* Actions Footer */}
+                  {isPending && onResolveReport && (
+                    <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#F0EFEB] dark:border-[#2C382A]">
+                      <button
+                        type="button"
+                        onClick={() => onResolveReport(rep.id, 'dismiss')}
+                        className="px-3.5 py-1.5 rounded-full border border-[#DCE4D8] dark:border-[#3A4738] text-xs font-semibold text-[#5A6D58] dark:text-[#8E9B8A] hover:bg-[#FAF9F6] dark:hover:bg-[#20281F]"
+                      >
+                        Bỏ qua báo cáo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Bạn có chắc muốn tước quyền Người Lắng Nghe của "${rep.reportedListenerName}" ngay lập tức?`)) {
+                            onResolveReport(rep.id, 'ban_listener');
+                          }
+                        }}
+                        className="px-4 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>Tước quyền Người Lắng Nghe ngay</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
       {/* Moderation / Master Feed Posts Tab Content */}
-      {activeTab !== 'mentor_applications' && (
+      {activeTab !== 'mentor_applications' && activeTab !== 'reports_queue' && (
         <div className="space-y-4">
           {filteredPosts.length === 0 ? (
             <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-8 text-center text-[#7E7A71] dark:text-[#8E9B8A] text-xs">
@@ -549,7 +745,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClick={() => setPreviewImageUrl(null)}
         >
           <div 
-            className="bg-white dark:bg-[#1C251A] rounded-2xl p-4 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col space-y-3"
+            className="bg-white dark:bg-[#1C251A] rounded-2xl p-4 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col space-y-3 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -561,11 +757,91 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 onClick={() => setPreviewImageUrl(null)}
                 className="p-1 rounded-lg text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="flex-1 overflow-auto rounded-xl border flex items-center justify-center bg-black/10">
               <img src={previewImageUrl} alt="Certificate Proof" className="max-w-full max-h-[65vh] object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reject Application Reason */}
+      {rejectingAppId && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setRejectingAppId(null)}
+        >
+          <div 
+            className="bg-white dark:bg-[#1C251A] rounded-2xl p-5 max-w-md w-full shadow-2xl border border-[#DCE4D8] dark:border-[#3A4738] space-y-3.5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                <XCircle className="w-4 h-4" />
+                <span>Từ chối hồ sơ ứng viên</span>
+              </span>
+              <button
+                onClick={() => setRejectingAppId(null)}
+                className="p-1 rounded-lg text-[#8E9B8A] hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] leading-relaxed">
+              Chọn lý do mẫu hoặc nhập phản hồi gửi đến ứng viên để họ biết và bổ sung hồ sơ:
+            </p>
+
+            {/* Presets */}
+            <div className="space-y-1.5">
+              {rejectPresets.map((preset, idx) => (
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => setCustomRejectReason(preset)}
+                  className={`w-full text-left p-2 rounded-xl text-xs border transition-all ${
+                    customRejectReason === preset
+                      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-400 text-rose-900 dark:text-rose-200 font-semibold'
+                      : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#DCE4D8] dark:border-[#3A4738] text-[#3A4036] dark:text-[#C5D0C3] hover:border-rose-300'
+                  }`}
+                >
+                  • {preset}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Input */}
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-[#182217] dark:text-[#E8ECE6]">
+                Nội dung phản hồi chi tiết:
+              </label>
+              <textarea
+                value={customRejectReason}
+                onChange={e => setCustomRejectReason(e.target.value)}
+                placeholder="Nhập lý do từ chối cụ thể..."
+                rows={2}
+                className="w-full bg-[#FAF9F6] dark:bg-[#20281F] border border-[#DCE4D8] dark:border-[#3A4738] rounded-xl p-2.5 text-xs text-[#182217] dark:text-[#E8ECE6] placeholder-[#8E9B8A] focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setRejectingAppId(null)}
+                className="px-3.5 py-1.5 rounded-full border text-xs font-semibold text-[#5A6D58] dark:text-[#8E9B8A]"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReject}
+                className="px-4 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                Xác nhận từ chối
+              </button>
             </div>
           </div>
         </div>
