@@ -873,7 +873,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
         {/* Reply Input Bar Sticky Centered at Bottom */}
         <div className="sticky bottom-0 z-30 pt-4 pb-2 bg-gradient-to-t from-[var(--bg-main)] via-[var(--bg-main)]/95 to-transparent w-full backdrop-blur-sm mt-4">
-          {post.isCounselingMailbox && !(isAuthor || (userState?.isLoggedIn && (userState?.isSpecialist || userState?.mentorRoleType === 'specialist' || userState?.isCampusCounselor))) ? (
+          {post.isCounselingMailbox && !(isAuthor || (userState?.isLoggedIn && (userState?.isSpecialist || userState?.mentorRoleType === 'specialist' || userState?.isCampusCounselor || userState?.userRole === 'admin_moderator'))) ? (
             <div className="p-4 rounded-3xl bg-emerald-900/10 dark:bg-[#1E271D] border border-emerald-600/30 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">

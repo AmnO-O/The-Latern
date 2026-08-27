@@ -122,11 +122,13 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   // Check if current user is a Certified Psychological Specialist or Campus Counselor
   // Strictly requires specialist qualification, NOT granted to Peer Listeners
   const isSpecialistOrCounselor = Boolean(
-    userState?.isLoggedIn && (
+    isAdmin ||
+    (userState?.isLoggedIn && (
       userState?.isSpecialist ||
       userState?.mentorRoleType === 'specialist' ||
-      userState?.isCampusCounselor
-    )
+      userState?.isCampusCounselor ||
+      userState?.userRole === 'admin_moderator'
+    ))
   );
 
   const isAuthorOfPost = (p: Post) => {
