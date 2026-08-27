@@ -1162,10 +1162,10 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
             {/* Quiet Replies Section */}
             <div className="space-y-4">
               <h3 className={`font-serif italic font-bold text-xl ${activeTheme.textPrimary} flex items-center gap-2`}>
-                <span>Phản hồi xoa dịu ({post.replies.length})</span>
+                <span>Phản hồi xoa dịu ({localReplies.length})</span>
               </h3>
 
-              {post.replies.map(reply => (
+              {localReplies.map(reply => (
                 <div key={reply.id} className={`p-6 rounded-2xl border ${activeTheme.card} space-y-2`}>
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className={activeTheme.accent}>🌿 {getFormattedReplyAuthorName(reply)}</span>

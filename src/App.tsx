@@ -1530,7 +1530,7 @@ export default function App() {
     }
 
     const newReply: Reply = {
-      id: `reply-${Date.now()}`,
+      id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       postId: postId,
       authorUid: currentUserId,
       authorName: authorName,
@@ -1551,29 +1551,40 @@ export default function App() {
       authorMajor: replyOptions?.authorMajor
     };
 
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const currentReplies = Array.isArray(p.replies) ? p.replies : [];
-        const updatedReplies = [...currentReplies, newReply];
-        addReplyToPostInFirestore(postId, newReply, updatedReplies).catch(err => {
-          console.warn('Firestore sync reply error:', err);
-        });
-        return {
-          ...p,
-          repliesCount: (p.repliesCount || 0) + 1,
-          replies: updatedReplies
-        };
+    // Calculate updated replies list
+    const currentReplies = targetPost && Array.isArray(targetPost.replies) ? targetPost.replies : [];
+    const updatedReplies = [...currentReplies.filter(r => r.id !== newReply.id), newReply];
+
+    // Optimistically update local posts state
+    setPosts(prev => {
+      const exists = prev.some(p => p.id === postId);
+      if (!exists && targetPost) {
+        return [{ ...targetPost, replies: updatedReplies, repliesCount: updatedReplies.length }, ...prev];
       }
-      return p;
-    }));
+      return prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            repliesCount: updatedReplies.length,
+            replies: updatedReplies
+          };
+        }
+        return p;
+      });
+    });
 
     if (selectedPost && selectedPost.id === postId) {
       setSelectedPost(prev => prev ? {
         ...prev,
-        repliesCount: (prev.repliesCount || 0) + 1,
-        replies: [...(Array.isArray(prev.replies) ? prev.replies : []), newReply]
+        repliesCount: updatedReplies.length,
+        replies: updatedReplies
       } : null);
     }
+
+    // Persist to real Firestore database immediately
+    addReplyToPostInFirestore(postId, newReply, updatedReplies, targetPost || undefined).catch(err => {
+      console.error('Firestore sync reply error:', err);
+    });
 
     // Generate notification for post author, comment reply, or tag mention
     if (targetPost) {
@@ -2199,11 +2210,19 @@ export default function App() {
                 content: text,
                 hugsCount: 2
               };
+              const targetP = posts.find(p => p.id === postId);
+              const currentR = targetP && Array.isArray(targetP.replies) ? targetP.replies : [];
+              const updatedR = [...currentR, replyObj];
+              
               setPosts(prev => prev.map(p => p.id === postId ? {
                 ...p,
-                repliesCount: p.repliesCount + 1,
-                replies: [...p.replies, replyObj]
+                repliesCount: updatedR.length,
+                replies: updatedR
               } : p));
+
+              addReplyToPostInFirestore(postId, replyObj, updatedR, targetP).catch(err => {
+                console.error('Mentor reply Firestore sync error:', err);
+              });
             }}
             applications={mentorApplications}
             onApproveApplication={handleApproveMentorApplication}

@@ -302,19 +302,24 @@ export function sanitizeForFirestore<T>(data: T): T {
   if (data === null || data === undefined) {
     return null as any;
   }
-  if (Array.isArray(data)) {
-    return data.map(item => sanitizeForFirestore(item)) as any;
-  }
-  if (typeof data === 'object' && !(data instanceof Date)) {
-    const cleaned: Record<string, any> = {};
-    for (const [key, value] of Object.entries(data)) {
-      if (value !== undefined) {
-        cleaned[key] = sanitizeForFirestore(value);
-      }
+  try {
+    // Robust deep serialization that removes all undefined keys
+    return JSON.parse(JSON.stringify(data));
+  } catch (e) {
+    if (Array.isArray(data)) {
+      return data.map(item => sanitizeForFirestore(item)) as any;
     }
-    return cleaned as T;
+    if (typeof data === 'object' && !(data instanceof Date)) {
+      const cleaned: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined) {
+          cleaned[key] = sanitizeForFirestore(value);
+        }
+      }
+      return cleaned as T;
+    }
+    return data;
   }
-  return data;
 }
 
 export const createPostInFirestore = async (newPost: Post) => {
@@ -346,24 +351,41 @@ export const updatePostStatusInFirestore = async (postId: string, status: 'appro
   }
 };
 
-export const addReplyToPostInFirestore = async (postId: string, newReply: Reply, updatedReplies: Reply[]) => {
+export const addReplyToPostInFirestore = async (
+  postId: string, 
+  newReply: Reply, 
+  updatedReplies: Reply[], 
+  fullPostFallback?: Post
+) => {
   try {
     const postRef = doc(db, 'posts', postId);
     const sanitizedReplies = sanitizeForFirestore(updatedReplies);
     const sanitizedNewReply = sanitizeForFirestore(newReply);
 
-    await setDoc(postRef, {
+    const updatePayload: Record<string, any> = {
       replies: sanitizedReplies,
       repliesCount: updatedReplies.length,
       lastReplyAt: Date.now()
-    }, { merge: true });
+    };
+
+    if (fullPostFallback) {
+      const sanitizedFullPost = sanitizeForFirestore({
+        ...fullPostFallback,
+        replies: sanitizedReplies,
+        repliesCount: updatedReplies.length,
+        lastReplyAt: Date.now()
+      });
+      Object.assign(updatePayload, sanitizedFullPost);
+    }
+
+    await setDoc(postRef, updatePayload, { merge: true });
 
     try {
       const replyRef = doc(db, 'posts', postId, 'replies', newReply.id);
       await setDoc(replyRef, sanitizedNewReply, { merge: true });
     } catch (_) {}
   } catch (err) {
-    console.error('Add reply error:', err);
+    console.error('Add reply to Firestore error:', err);
     throw err;
   }
 };
