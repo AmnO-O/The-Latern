@@ -38,6 +38,7 @@ import { ReputationBadge } from './ReputationBadge';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getEffectiveAvatar } from '../data/avatarPresets';
 import { getFormattedAuthorName, getFormattedReplyAuthorName } from '../lib/authorUtils';
+import { PublicProfileTarget } from './PublicProfileModal';
 
 interface PostDetailViewProps {
   post: Post;
@@ -69,6 +70,7 @@ interface PostDetailViewProps {
   onConnectWithAuthor?: (post: Post) => void;
   onOpenRatingModal?: (listenerName: string, postId?: string) => void;
   onOpenReportModal?: (listenerName: string, postId?: string) => void;
+  onViewPublicProfile?: (target: PublicProfileTarget) => void;
   isAuthor?: boolean;
 }
 
@@ -91,6 +93,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   onConnectWithAuthor,
   onOpenRatingModal,
   onOpenReportModal,
+  onViewPublicProfile,
   isAuthor
 }) => {
   const [replyInput, setReplyInput] = useState('');
@@ -115,7 +118,18 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   const replyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLocalReplies(post.replies || []);
+    if (Array.isArray(post.replies)) {
+      setLocalReplies(prev => {
+        const replyMap = new Map<string, Reply>();
+        (post.replies || []).forEach(r => replyMap.set(r.id, r));
+        prev.forEach(r => {
+          if (!replyMap.has(r.id)) {
+            replyMap.set(r.id, r);
+          }
+        });
+        return Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      });
+    }
   }, [post.replies]);
 
   // Zen Focus Reading Mode States
@@ -196,12 +210,54 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
   const handleSubmitReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyInput.trim()) return;
+    const trimmed = replyInput.trim();
+    if (!trimmed) return;
 
     const isPublic = replyPersonaMode === 'identity' && isIdentityLockedForSchool;
+    
+    // Generate optimistic reply for instant UI feedback
+    let assignedRole: 'student' | 'peer_listener' | 'expert' = 'student';
+    if (userState?.userRole === 'mentor' || userState?.isSpecialist || userState?.mentorRoleType === 'specialist') {
+      assignedRole = 'expert';
+    } else if (userState?.userRole === 'peer_listener' || userState?.isPeerMentor || userState?.mentorRoleType === 'peer_listener') {
+      assignedRole = 'peer_listener';
+    }
+
+    const optimisticAuthorName = isPublic && userDisplayName
+      ? userDisplayName
+      : isAuthor
+      ? (post.authorAnonId || '#Tác giả')
+      : userState?.userAnonNumber
+      ? `#${userState.userAnonNumber}`
+      : 'Người dùng ẩn danh';
+
+    const optimisticReply: Reply = {
+      id: `reply-${Date.now()}`,
+      postId: post.id,
+      authorUid: userState?.googleUser?.uid || 'guest',
+      authorName: optimisticAuthorName,
+      authorRole: assignedRole,
+      authorReputationScore: userState?.reputationScore || 0,
+      isOP: isAuthor,
+      isVerifiedBadge: userState?.verificationStatus === 'verified',
+      timestamp: 'Vừa xong',
+      createdAt: Date.now(),
+      content: trimmed,
+      hugsCount: 0,
+      replyToAuthor: replyingTo?.authorName,
+      replyToId: replyingTo?.id,
+      isIdentityPublic: isPublic,
+      authorDisplayName: isPublic ? userDisplayName : undefined,
+      authorAvatar: isPublic ? userAvatar : undefined,
+      authorCohort: isPublic ? (effectiveCohort || undefined) : undefined,
+      authorMajor: isPublic ? (effectiveMajor || undefined) : undefined
+    };
+
+    setLocalReplies(prev => [...prev, optimisticReply]);
+
     onAddReply(
       post.id, 
-      replyInput.trim(), 
+      trimmed, 
       replyingTo || undefined,
       {
         isIdentityPublic: isPublic,
@@ -327,15 +383,40 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
           {/* Header metadata */}
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (onViewPublicProfile) {
+                  onViewPublicProfile({
+                    displayName: post.authorDisplayName || getFormattedAuthorName(post),
+                    avatarUrl: post.authorAvatarUrl,
+                    schoolName: post.schoolName,
+                    role: post.authorRole || 'student',
+                    cohort: post.authorCohort,
+                    major: post.authorMajor,
+                    isVerifiedBadge: !!post.authorClassBadge || post.isIdentityPublic,
+                    reputationScore: post.authorReputationScore ?? calculateReputationScore(
+                      !!post.authorClassBadge || post.authorAnonId.includes('Xác thực') || post.authorAnonId.includes('492'),
+                      post.hugsCount
+                    ),
+                    hugsReceived: post.hugsCount,
+                    authorUid: post.authorUid,
+                    isIdentityPublic: post.isIdentityPublic,
+                    anonId: post.authorAnonId
+                  });
+                }
+              }}
+              className="group/author flex items-center gap-3 text-left hover:opacity-90 transition-all rounded-xl p-1 -m-1 focus:outline-none focus:ring-2 focus:ring-[#2A4228]/20"
+              title={post.isIdentityPublic ? "Xem trang cá nhân công khai" : "Danh tính được bảo vệ ẩn danh"}
+            >
               {post.isIdentityPublic && post.authorAvatarUrl ? (
                 <img
                   src={post.authorAvatarUrl}
                   alt={getFormattedAuthorName(post)}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888] shadow-xs shrink-0"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888] shadow-xs shrink-0 group-hover/author:scale-105 transition-transform"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-[#2A4228]/15 border border-[#2A4228]/30 flex items-center justify-center text-[#2A4228] dark:text-[#8BA888] shrink-0">
+                <div className="w-12 h-12 rounded-full bg-[#2A4228]/15 border border-[#2A4228]/30 flex items-center justify-center text-[#2A4228] dark:text-[#8BA888] shrink-0 group-hover/author:scale-105 transition-transform">
                   {post.isIdentityPublic ? (
                     <User className="w-6 h-6" />
                   ) : (
@@ -346,7 +427,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-base text-[#0F180E] dark:text-[#E8ECE6]">
+                  <span className="font-bold text-base text-[#0F180E] dark:text-[#E8ECE6] group-hover/author:underline">
                     {getFormattedAuthorName(post)}
                   </span>
 
@@ -413,7 +494,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   {formatRelativeTime(post.createdAt, post.timestamp, post.id)} • {post.schoolName}
                 </p>
               </div>
-            </div>
+            </button>
 
             <div className="flex flex-col items-end gap-2">
               <div className="flex flex-wrap gap-1.5 justify-end">
@@ -593,7 +674,33 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-2.5">
-                    <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      disabled={isAIReply}
+                      onClick={() => {
+                        if (isAIReply || !onViewPublicProfile) return;
+                        onViewPublicProfile({
+                          displayName: reply.authorDisplayName || getFormattedReplyAuthorName(reply),
+                          avatarUrl: reply.authorAvatar,
+                          schoolName: post.schoolName,
+                          role: reply.authorRole || 'student',
+                          cohort: reply.authorCohort,
+                          major: reply.authorMajor,
+                          isVerifiedBadge: reply.isVerifiedBadge || reply.isIdentityPublic,
+                          reputationScore: reply.authorReputationScore,
+                          hugsReceived: reply.hugsCount,
+                          authorUid: reply.authorUid,
+                          isIdentityPublic: reply.isIdentityPublic,
+                          anonId: reply.authorName
+                        });
+                      }}
+                      className={`flex items-center gap-2.5 text-left rounded-xl p-1 -m-1 transition-all ${
+                        isAIReply 
+                          ? 'cursor-default' 
+                          : 'cursor-pointer hover:opacity-90 group/replyauthor focus:outline-none focus:ring-2 focus:ring-[#2A4228]/20'
+                      }`}
+                      title={isAIReply ? "Phản hồi thấu cảm từ AI" : reply.isIdentityPublic ? "Xem trang cá nhân công khai" : "Danh tính được bảo vệ ẩn danh"}
+                    >
                       {isAIReply ? (
                         <div className="w-8 h-8 rounded-full bg-[#2A4228] text-white flex items-center justify-center shrink-0">
                           <Flame className="w-4 h-4" />
@@ -602,17 +709,17 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                         <img
                           src={reply.authorAvatar}
                           alt={reply.authorDisplayName || reply.authorName}
-                          className="w-8 h-8 rounded-full object-cover border border-[#2A4228] shadow-2xs shrink-0"
+                          className="w-8 h-8 rounded-full object-cover border border-[#2A4228] shadow-2xs shrink-0 group-hover/replyauthor:scale-105 transition-transform"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#2A4228]/15 border border-[#2A4228]/30 flex items-center justify-center text-[#2A4228] dark:text-[#8BA888] font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#2A4228]/15 border border-[#2A4228]/30 flex items-center justify-center text-[#2A4228] dark:text-[#8BA888] font-bold text-xs shrink-0 group-hover/replyauthor:scale-105 transition-transform">
                           {reply.isOP ? '👑' : reply.isIdentityPublic ? '👤' : '🌿'}
                         </div>
                       )}
 
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-xs text-[#182217] dark:text-[#E8ECE6]">
+                          <span className={`font-bold text-xs text-[#182217] dark:text-[#E8ECE6] ${!isAIReply ? 'group-hover/replyauthor:underline' : ''}`}>
                             {getFormattedReplyAuthorName(reply)}
                           </span>
 
@@ -667,7 +774,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                           {formatRelativeTime(reply.createdAt, reply.timestamp, reply.id)}
                         </p>
                       </div>
-                    </div>
+                    </button>
 
                     <div className="flex items-center gap-1.5">
                       <button
@@ -744,7 +851,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
         {/* Reply Input Bar Sticky Centered at Bottom */}
         <div className="sticky bottom-0 z-30 pt-4 pb-2 bg-gradient-to-t from-[var(--bg-main)] via-[var(--bg-main)]/95 to-transparent w-full backdrop-blur-sm mt-4">
-          {post.isCounselingMailbox && !(isAuthor || userState?.isSpecialist || userState?.isCampusCounselor || userState?.userRole === 'mentor' || userState?.userRole === 'admin_moderator' || userState?.mentorRoleType === 'specialist') ? (
+          {post.isCounselingMailbox && !(isAuthor || (userState?.isLoggedIn && (userState?.isSpecialist || userState?.mentorRoleType === 'specialist' || userState?.isCampusCounselor))) ? (
             <div className="p-4 rounded-3xl bg-emerald-900/10 dark:bg-[#1E271D] border border-emerald-600/30 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">

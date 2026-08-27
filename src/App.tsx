@@ -35,6 +35,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { HealingFeedbackModal } from './components/HealingFeedbackModal';
 import { ListenerRatingModal } from './components/ListenerRatingModal';
 import { ListenerReportModal } from './components/ListenerReportModal';
+import { PublicProfileModal, PublicProfileTarget } from './components/PublicProfileModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
@@ -62,6 +63,7 @@ import {
   clearDirectThreadHistoryInFirestore,
   loginWithGoogle,
   logout,
+  subscribeToAuthChanges,
   FirestoreThreadDoc,
   FirestoreMessageItem
 } from './lib/firebase';
@@ -252,6 +254,7 @@ export default function App() {
   // Healing Rating Modal & Report Modal State
   const [ratingTarget, setRatingTarget] = useState<{ listenerName: string; threadId?: string; postId?: string } | null>(null);
   const [reportTarget, setReportTarget] = useState<{ listenerName: string; threadId?: string; postId?: string } | null>(null);
+  const [publicProfileTarget, setPublicProfileTarget] = useState<PublicProfileTarget | null>(null);
 
   // Listener Ratings State
   const [listenerRatings, setListenerRatings] = useState<ListenerRatingFeedback[]>(() => {
@@ -557,8 +560,16 @@ export default function App() {
           roleType: role
         } as PeerMentorApplication;
 
+        const matchingApp = mentorApplications.find(a => a.id === appId) || prev.peerMentorApplication;
+        const schoolObj = schools.find(s => s.id === matchingApp?.schoolId) || (matchingApp?.schoolId ? { id: matchingApp.schoolId, name: matchingApp.schoolName, slug: matchingApp.schoolId, type: 'university' as const, studentsCount: 1 } : null);
+        const existingVerified = prev.verifiedSchools || [];
+        const updatedVerified = (schoolObj && !existingVerified.some(s => s.id === schoolObj.id))
+          ? [...existingVerified, schoolObj]
+          : existingVerified;
+
         return {
           ...prev,
+          verifiedSchools: updatedVerified,
           peerMentorApplication: updatedApp,
           isPeerMentor: true,
           isSpecialist: role === 'specialist',
@@ -623,15 +634,28 @@ export default function App() {
           // Clear legacy mock cached userState
           localStorage.removeItem('lantern_user_state');
         } else {
-          const isVerified = parsed.verificationStatus === 'verified';
-          const hugsRec = parsed.hugsReceivedCount || 0;
-          const isUserLogged = Boolean(parsed.isLoggedIn || parsed.googleUser?.email);
+          const isUserLogged = Boolean(parsed.isLoggedIn && parsed.googleUser?.email);
+          const isVerified = isUserLogged && parsed.verificationStatus === 'verified';
+          const hugsRec = isUserLogged ? (parsed.hugsReceivedCount || 0) : 0;
           return {
             ...parsed,
+            isLoggedIn: isUserLogged,
+            googleUser: isUserLogged ? parsed.googleUser : undefined,
+            displayName: isUserLogged ? parsed.displayName : undefined,
+            verifiedFullName: isUserLogged ? parsed.verifiedFullName : undefined,
+            customAvatarUrl: isUserLogged ? parsed.customAvatarUrl : undefined,
+            isIdentityLocked: isUserLogged ? (parsed.isIdentityLocked ?? false) : false,
             activePostingMode: isUserLogged ? (parsed.activePostingMode || 'anonymous') : 'anonymous',
-            reputationScore: parsed.reputationScore ?? calculateReputationScore(isVerified, hugsRec),
+            reputationScore: isUserLogged ? (parsed.reputationScore ?? calculateReputationScore(isVerified, hugsRec)) : 0,
             selectedSchool: parsed.selectedSchool || (parsed.verifiedSchools?.[0] || PUBLIC_GLOBAL_SCHOOL),
-            verifiedSchools: Array.isArray(parsed.verifiedSchools) ? parsed.verifiedSchools : []
+            verifiedSchools: isUserLogged && Array.isArray(parsed.verifiedSchools) ? parsed.verifiedSchools : [],
+            verificationStatus: isUserLogged ? (parsed.verificationStatus || 'unverified') : 'unverified',
+            isPeerMentor: isUserLogged ? Boolean(parsed.isPeerMentor) : false,
+            isSpecialist: isUserLogged ? Boolean(parsed.isSpecialist) : false,
+            mentorRoleType: isUserLogged ? parsed.mentorRoleType : undefined,
+            peerMentorApplication: isUserLogged ? parsed.peerMentorApplication : undefined,
+            userRole: isUserLogged ? (parsed.userRole || 'student') : 'student',
+            schoolVerifications: isUserLogged ? (parsed.schoolVerifications || {}) : {}
           };
         }
       }
@@ -881,12 +905,59 @@ export default function App() {
   useEffect(() => {
     const unsubscribePosts = listenToPostsFromFirestore((firestorePosts) => {
       if (firestorePosts) {
-        setPosts(firestorePosts);
+        setPosts(prevPosts => {
+          if (!prevPosts || prevPosts.length === 0) return firestorePosts;
+          return firestorePosts.map(fp => {
+            const local = prevPosts.find(p => p.id === fp.id);
+            if (!local) return fp;
+
+            const fpReplies = Array.isArray(fp.replies) ? fp.replies : [];
+            const localReplies = Array.isArray(local.replies) ? local.replies : [];
+            const replyMap = new Map<string, Reply>();
+            fpReplies.forEach(r => replyMap.set(r.id, r));
+            localReplies.forEach(r => {
+              if (!replyMap.has(r.id)) {
+                replyMap.set(r.id, r);
+              }
+            });
+            const mergedReplies = Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+            return {
+              ...fp,
+              isLiked: local.isLiked !== undefined ? local.isLiked : fp.isLiked,
+              isHugged: local.isHugged !== undefined ? local.isHugged : fp.isHugged,
+              isSaved: local.isSaved !== undefined ? local.isSaved : fp.isSaved,
+              replies: mergedReplies,
+              repliesCount: Math.max(fp.repliesCount || 0, mergedReplies.length)
+            };
+          });
+        });
+
         // Also update selectedPost if activeTab is post_detail
         setSelectedPost(prev => {
           if (!prev) return null;
           const fresh = firestorePosts.find(p => p.id === prev.id);
-          return fresh || prev;
+          if (!fresh) return prev;
+
+          const freshReplies = Array.isArray(fresh.replies) ? fresh.replies : [];
+          const prevReplies = Array.isArray(prev.replies) ? prev.replies : [];
+          const replyMap = new Map<string, Reply>();
+          freshReplies.forEach(r => replyMap.set(r.id, r));
+          prevReplies.forEach(r => {
+            if (!replyMap.has(r.id)) {
+              replyMap.set(r.id, r);
+            }
+          });
+          const mergedReplies = Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+          return {
+            ...fresh,
+            isLiked: prev.isLiked !== undefined ? prev.isLiked : fresh.isLiked,
+            isHugged: prev.isHugged !== undefined ? prev.isHugged : fresh.isHugged,
+            isSaved: prev.isSaved !== undefined ? prev.isSaved : fresh.isSaved,
+            replies: mergedReplies,
+            repliesCount: Math.max(fresh.repliesCount || 0, mergedReplies.length)
+          };
         });
       }
     });
@@ -968,6 +1039,57 @@ export default function App() {
     }
   }, [theme]);
 
+  // Listen to Firebase Auth state changes
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges((firebaseUser) => {
+      if (firebaseUser) {
+        setUserState(prev => {
+          if (prev.googleUser?.uid === firebaseUser.uid && prev.isLoggedIn) return prev;
+          return {
+            ...prev,
+            isLoggedIn: true,
+            googleUser: {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'Người dùng Google',
+              photoURL: firebaseUser.photoURL || ''
+            }
+          };
+        });
+      } else {
+        setUserState(prev => {
+          if (!prev.isLoggedIn && !prev.googleUser && !prev.displayName && !prev.verifiedFullName && !prev.isPeerMentor && !prev.isSpecialist) {
+            return prev;
+          }
+          const resetState: UserState = {
+            ...prev,
+            isLoggedIn: false,
+            googleUser: undefined,
+            displayName: undefined,
+            verifiedFullName: undefined,
+            customAvatarUrl: undefined,
+            isIdentityLocked: false,
+            activePostingMode: 'anonymous',
+            isPeerMentor: false,
+            isSpecialist: false,
+            mentorRoleType: undefined,
+            peerMentorApplication: undefined,
+            userRole: 'student',
+            verificationStatus: 'unverified',
+            verifiedSchools: [],
+            schoolVerifications: {},
+            reputationScore: 0
+          };
+          try {
+            localStorage.setItem('lantern_user_state', JSON.stringify(resetState));
+          } catch (e) {}
+          return resetState;
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const handleGoogleSignIn = async () => {
     try {
       const user = await loginWithGoogle();
@@ -985,6 +1107,39 @@ export default function App() {
     } catch (err) {
       console.warn('Sign in notice:', err);
     }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.warn('Sign out notice:', err);
+    }
+    setUserState(prev => {
+      const resetState: UserState = {
+        ...prev,
+        isLoggedIn: false,
+        googleUser: undefined,
+        displayName: undefined,
+        verifiedFullName: undefined,
+        customAvatarUrl: undefined,
+        isIdentityLocked: false,
+        activePostingMode: 'anonymous',
+        isPeerMentor: false,
+        isSpecialist: false,
+        mentorRoleType: undefined,
+        peerMentorApplication: undefined,
+        userRole: 'student',
+        verificationStatus: 'unverified',
+        verifiedSchools: [],
+        schoolVerifications: {},
+        reputationScore: 0
+      };
+      try {
+        localStorage.setItem('lantern_user_state', JSON.stringify(resetState));
+      } catch (e) {}
+      return resetState;
+    });
   };
 
   // Handle post creation with Gemini API Moderation and Firestore persistence
@@ -1343,6 +1498,7 @@ export default function App() {
       authorDisplayName?: string;
       authorAvatar?: string;
       authorCohort?: string;
+      authorMajor?: string;
     }
   ) => {
     const targetPost = posts.find(p => p.id === postId) || (selectedPost?.id === postId ? selectedPost : null);
@@ -1391,7 +1547,8 @@ export default function App() {
       isIdentityPublic: replyOptions?.isIdentityPublic,
       authorDisplayName: replyOptions?.authorDisplayName,
       authorAvatar: replyOptions?.authorAvatar,
-      authorCohort: replyOptions?.authorCohort
+      authorCohort: replyOptions?.authorCohort,
+      authorMajor: replyOptions?.authorMajor
     };
 
     setPosts(prev => prev.map(p => {
@@ -1848,6 +2005,8 @@ export default function App() {
         unreadNotificationsCount={notifications.filter(n => !n.isRead).length}
         isDesktopCollapsed={isSidebarCollapsed}
         setIsDesktopCollapsed={setIsSidebarCollapsed}
+        onOpenLogin={handleGoogleSignIn}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Router */}
@@ -1923,6 +2082,7 @@ export default function App() {
             openVerify={() => setIsVerifyOpen(true)}
             openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             openDirectChatWithPeer={handleOpenDirectChatWithPeer}
+            onViewPublicProfile={(target) => setPublicProfileTarget(target)}
           />
         )}
 
@@ -1966,6 +2126,7 @@ export default function App() {
             onOpenReportModal={(listenerName, postId) => {
               setReportTarget({ listenerName, postId });
             }}
+            onViewPublicProfile={(target) => setPublicProfileTarget(target)}
             isAuthor={isUserAuthor(selectedPost)}
           />
         )}
@@ -2002,6 +2163,7 @@ export default function App() {
             onOpenVerify={() => setIsVerifyOpen(true)}
             onOpenPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             onOpenLogin={handleGoogleSignIn}
+            onSignOut={handleSignOut}
             onRemoveSchoolVerification={handleRemoveSchoolVerification}
             onResetAllVerifications={handleResetAllVerifications}
             onSelectPost={(post) => {
@@ -2247,6 +2409,33 @@ export default function App() {
           postId={reportTarget.postId}
           reporterAnonId={userState.displayName || 'Bạn Ẩn Danh'}
           onSubmitReport={handleSubmitReport}
+        />
+      )}
+
+      {/* Public Profile Modal for Real-Identity / Verified Users */}
+      {publicProfileTarget && (
+        <PublicProfileModal
+          isOpen={!!publicProfileTarget}
+          onClose={() => setPublicProfileTarget(null)}
+          target={publicProfileTarget}
+          currentUserState={userState}
+          allPublicPosts={posts}
+          onSelectPost={(p) => {
+            setPublicProfileTarget(null);
+            setSelectedPost(p);
+            setActiveTab('post_detail');
+          }}
+          onToggleLike={handleToggleLike}
+          onToggleHug={handleToggleHug}
+          onToggleSave={handleToggleSave}
+          onConnectWithAuthor={(peerName, peerRole, schoolName) => {
+            setPublicProfileTarget(null);
+            handleOpenDirectChatWithPeer(peerName, peerRole === 'expert' ? 'Chuyên gia tư vấn' : peerRole === 'peer_listener' ? 'Người lắng nghe' : 'Thành viên trường');
+          }}
+          onOpenReportModal={(targetName) => {
+            setPublicProfileTarget(null);
+            setReportTarget({ listenerName: targetName });
+          }}
         />
       )}
     </div>

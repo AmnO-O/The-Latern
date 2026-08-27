@@ -50,6 +50,8 @@ interface NavbarProps {
   unreadNotificationsCount?: number;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
+  onOpenLogin?: () => void;
+  onSignOut?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -71,11 +73,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   openVerify,
   unreadNotificationsCount = 0,
   isDesktopCollapsed = false,
-  setIsDesktopCollapsed
+  setIsDesktopCollapsed,
+  onOpenLogin,
+  onSignOut
 }) => {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const handleGoogleSignIn = async () => {
+    if (onOpenLogin) {
+      onOpenLogin();
+      return;
+    }
     try {
       const user = await loginWithGoogle();
       if (!user) return; // User closed or cancelled sign in popup
@@ -95,12 +103,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleSignOut = async () => {
-    await logout();
-    setUserState(prev => ({
-      ...prev,
-      isLoggedIn: false,
-      googleUser: undefined
-    }));
+    if (onSignOut) {
+      onSignOut();
+      return;
+    }
+    try {
+      await logout();
+    } catch (e) {
+      console.warn('Sign out notice:', e);
+    }
+    setUserState(prev => {
+      const resetState: UserState = {
+        ...prev,
+        isLoggedIn: false,
+        googleUser: undefined,
+        displayName: undefined,
+        verifiedFullName: undefined,
+        customAvatarUrl: undefined,
+        isIdentityLocked: false,
+        activePostingMode: 'anonymous',
+        isPeerMentor: false,
+        isSpecialist: false,
+        mentorRoleType: undefined,
+        peerMentorApplication: undefined,
+        userRole: 'student',
+        verificationStatus: 'unverified',
+        verifiedSchools: [],
+        schoolVerifications: {},
+        reputationScore: 0
+      };
+      try {
+        localStorage.setItem('lantern_user_state', JSON.stringify(resetState));
+      } catch (e) {}
+      return resetState;
+    });
   };
 
   const navigateTo = (tab: ActiveTab) => {

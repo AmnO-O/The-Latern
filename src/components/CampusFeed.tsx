@@ -44,6 +44,7 @@ interface CampusFeedProps {
   openVerify: () => void;
   openPeerMentorModal?: () => void;
   openDirectChatWithPeer: (peerName: string, roleTitle: string) => void;
+  onViewPublicProfile?: (target: any) => void;
 }
 
 export const CampusFeed: React.FC<CampusFeedProps> = ({
@@ -67,14 +68,28 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   openComposer,
   openVerify,
   openPeerMentorModal,
-  openDirectChatWithPeer
+  openDirectChatWithPeer,
+  onViewPublicProfile
 }) => {
   const isGlobalView = !school || (school.id === 'global' || school.id === 'all-schools');
 
   const verifiedList = userState?.verifiedSchools || (userState?.selectedSchool ? [userState.selectedSchool] : []);
+  const isListenerOrMentorForThisSchool = Boolean(
+    userState?.isLoggedIn &&
+    (userState?.isPeerMentor || userState?.userRole === 'peer_listener' || userState?.userRole === 'mentor' || userState?.peerMentorApplication) &&
+    (
+      userState?.peerMentorApplication?.schoolId === school?.id || 
+      userState?.peerMentorApplication?.schoolName === school?.name ||
+      userState?.peerMentorApplication?.isGlobalScope ||
+      userState?.mentorRoleType === 'specialist' ||
+      userState?.isSpecialist
+    )
+  );
+
   const isVerifiedForThisSchool = !isGlobalView && (
-    verifiedList.some(s => s.id === school.id || s.slug === school.slug) || 
-    userState?.userRole === 'admin_moderator'
+    (userState?.isLoggedIn && verifiedList.some(s => s.id === school.id || s.slug === school.slug)) || 
+    (userState?.isLoggedIn && userState?.userRole === 'admin_moderator') ||
+    isListenerOrMentorForThisSchool
   );
 
   const [selectedTag, setSelectedTag] = useState<string>('Tất cả');
@@ -105,13 +120,13 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   };
 
   // Check if current user is a Certified Psychological Specialist or Campus Counselor
+  // Strictly requires specialist qualification, NOT granted to Peer Listeners
   const isSpecialistOrCounselor = Boolean(
-    isAdmin ||
-    userState?.isSpecialist ||
-    userState?.isCampusCounselor ||
-    userState?.userRole === 'mentor' ||
-    userState?.userRole === 'admin_moderator' ||
-    userState?.mentorRoleType === 'specialist'
+    userState?.isLoggedIn && (
+      userState?.isSpecialist ||
+      userState?.mentorRoleType === 'specialist' ||
+      userState?.isCampusCounselor
+    )
   );
 
   const isAuthorOfPost = (p: Post) => {
@@ -534,6 +549,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   onEditPost={isAuthor ? onEditPost : undefined}
                   onDeletePost={isAuthor ? onDeletePost : undefined}
                   onConnectWithAuthor={onConnectWithAuthor ? (p, e) => onConnectWithAuthor(p) : undefined}
+                  onViewPublicProfile={onViewPublicProfile}
                   isAuthor={isAuthor}
                 />
               );

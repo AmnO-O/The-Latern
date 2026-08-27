@@ -191,6 +191,10 @@ export const logout = async () => {
   await firebaseSignOut(auth);
 };
 
+export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
+
 // Firestore Post Operations
 export const fetchAllPostsFromFirestore = async (): Promise<Post[]> => {
   try {
@@ -346,11 +350,18 @@ export const addReplyToPostInFirestore = async (postId: string, newReply: Reply,
   try {
     const postRef = doc(db, 'posts', postId);
     const sanitizedReplies = sanitizeForFirestore(updatedReplies);
+    const sanitizedNewReply = sanitizeForFirestore(newReply);
+
     await setDoc(postRef, {
       replies: sanitizedReplies,
       repliesCount: updatedReplies.length,
       lastReplyAt: Date.now()
     }, { merge: true });
+
+    try {
+      const replyRef = doc(db, 'posts', postId, 'replies', newReply.id);
+      await setDoc(replyRef, sanitizedNewReply, { merge: true });
+    } catch (_) {}
   } catch (err) {
     console.error('Add reply error:', err);
     throw err;

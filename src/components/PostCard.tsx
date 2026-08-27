@@ -22,6 +22,7 @@ import { calculateReputationScore } from '../lib/reputationUtils';
 import { ReputationBadge } from './ReputationBadge';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getFormattedAuthorName } from '../lib/authorUtils';
+import { PublicProfileTarget } from './PublicProfileModal';
 
 interface PostCardProps {
   post: Post;
@@ -33,6 +34,7 @@ interface PostCardProps {
   onEditPost?: (post: Post, e: React.MouseEvent) => void;
   onDeletePost?: (postId: string, e: React.MouseEvent) => void;
   onConnectWithAuthor?: (post: Post, e: React.MouseEvent) => void;
+  onViewPublicProfile?: (target: PublicProfileTarget) => void;
   isAuthor?: boolean;
 }
 
@@ -46,6 +48,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onEditPost,
   onDeletePost,
   onConnectWithAuthor,
+  onViewPublicProfile,
   isAuthor
 }) => {
   return (
@@ -58,15 +61,41 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Author Header */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={(e) => {
+            if (onViewPublicProfile) {
+              e.stopPropagation();
+              onViewPublicProfile({
+                displayName: post.authorDisplayName || getFormattedAuthorName(post),
+                avatarUrl: post.authorAvatarUrl,
+                schoolName: post.schoolName,
+                role: post.authorRole || 'student',
+                cohort: post.authorCohort,
+                major: post.authorMajor,
+                isVerifiedBadge: !!post.authorClassBadge || post.isIdentityPublic,
+                reputationScore: post.authorReputationScore ?? calculateReputationScore(
+                  !!post.authorClassBadge || post.authorAnonId.includes('Xác thực') || post.authorAnonId.includes('492'), 
+                  post.hugsCount
+                ),
+                hugsReceived: post.hugsCount,
+                authorUid: post.authorUid,
+                isIdentityPublic: post.isIdentityPublic,
+                anonId: post.authorAnonId
+              });
+            }
+          }}
+          className="group/author flex items-center gap-3 text-left p-0.5 -m-0.5 rounded-xl hover:opacity-90 transition-all focus:outline-none"
+          title={post.isIdentityPublic ? "Xem hồ sơ công khai" : "Danh tính ẩn danh được bảo vệ"}
+        >
           {post.isIdentityPublic && post.authorAvatarUrl ? (
             <img
               src={post.authorAvatarUrl}
               alt={getFormattedAuthorName(post)}
-              className="w-10 h-10 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888]/60 shadow-2xs shrink-0"
+              className="w-10 h-10 rounded-full object-cover border-2 border-[#2A4228] dark:border-[#8BA888]/60 shadow-2xs shrink-0 group-hover/author:scale-105 transition-transform"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-[#E9EDC9] dark:bg-[#2C382A] border border-[#CCD5AE] dark:border-[#3A4738] flex items-center justify-center text-[#5A6E58] dark:text-[#8BA888] font-bold text-xs shrink-0 shadow-2xs">
+            <div className="w-9 h-9 rounded-full bg-[#E9EDC9] dark:bg-[#2C382A] border border-[#CCD5AE] dark:border-[#3A4738] flex items-center justify-center text-[#5A6E58] dark:text-[#8BA888] font-bold text-xs shrink-0 shadow-2xs group-hover/author:scale-105 transition-transform">
               {post.isIdentityPublic ? (
                 <User className="w-4 h-4 text-[#5A6E58] dark:text-[#8BA888]" />
               ) : (
@@ -76,7 +105,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           )}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-xs sm:text-sm text-[#182217] dark:text-[#E8ECE6]">
+              <span className="font-bold text-xs sm:text-sm text-[#182217] dark:text-[#E8ECE6] group-hover/author:underline">
                 {getFormattedAuthorName(post)}
               </span>
 
@@ -138,21 +167,21 @@ export const PostCard: React.FC<PostCardProps> = ({
                       const diffMs = post.expiresAt - Date.now();
                       if (diffMs <= 0) return 'Sắp tự hủy';
                       const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                      if (hours < 24) return `Tự hủy sau ${Math.max(1, hours)}h`;
-                      return `Tự hủy sau ${Math.ceil(hours / 24)} ngày`;
+                      if (hours < 24) return `${Math.max(1, hours)}h`;
+                      return `${Math.ceil(hours / 24)}d`;
                     })()}
                   </span>
                 </span>
               )}
             </div>
             <p 
-              className="text-[10px] text-[#2C382A] dark:text-[#8E9B8A] uppercase font-bold mt-0.5"
+              className="text-[10px] sm:text-xs text-[#5A6E58] dark:text-[#8E9B8A] mt-0.5 font-medium"
               title={formatFullDateTime(post.createdAt || post.id)}
             >
               {formatRelativeTime(post.createdAt, post.timestamp, post.id)}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Tags & Author Actions */}
         <div className="flex flex-col items-end gap-1.5">

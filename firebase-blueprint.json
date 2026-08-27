@@ -18,6 +18,8 @@
         "likesCount": { "type": "number" },
         "hugsCount": { "type": "number" },
         "repliesCount": { "type": "number" },
+        "replies": { "type": "array", "items": { "type": "object" } },
+        "lastReplyAt": { "type": "number" },
         "status": { "type": "string" },
         "isPublic": { "type": "boolean" },
         "imageUrl": { "type": "string" },

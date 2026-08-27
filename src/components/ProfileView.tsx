@@ -40,6 +40,8 @@ interface ProfileViewProps {
   savedPosts: Post[];
   onOpenVerify: () => void;
   onOpenPeerMentorModal?: () => void;
+  onOpenLogin?: () => void;
+  onSignOut?: () => void;
   onRemoveSchoolVerification?: (schoolId: string) => void;
   onResetAllVerifications?: () => void;
   onSelectPost: (post: Post) => void;
@@ -57,6 +59,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   savedPosts,
   onOpenVerify,
   onOpenPeerMentorModal,
+  onOpenLogin,
+  onSignOut,
   onRemoveSchoolVerification,
   onResetAllVerifications,
   onSelectPost,
@@ -72,10 +76,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [customAvatarUrlInput, setCustomAvatarUrlInput] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
+  const isLoggedInWithGmail = Boolean(userState.isLoggedIn && userState.googleUser?.email);
+
   // Manual Identity Input State & Per-School Editing States
   const [manualFullName, setManualFullName] = useState(
-    userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || ''
+    isLoggedInWithGmail ? (userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || '') : ''
   );
+
+  React.useEffect(() => {
+    if (isLoggedInWithGmail) {
+      setManualFullName(userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || '');
+    } else {
+      setManualFullName('');
+    }
+  }, [isLoggedInWithGmail, userState.verifiedFullName, userState.displayName, userState.googleUser?.displayName]);
   
   // State for editing per-school major and cohort
   const [schoolFormStates, setSchoolFormStates] = useState<{
@@ -94,15 +108,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [lockCommitAgreed, setLockCommitAgreed] = useState(false);
   const [lockValidationError, setLockValidationError] = useState<string | null>(null);
 
-  const isLoggedInWithGmail = Boolean(userState.isLoggedIn && userState.googleUser?.email);
   const isVerified = userState.verificationStatus === 'verified' && (userState.verifiedSchools || []).length > 0;
   const hugsReceived = userState.hugsReceivedCount || 0;
   const reputationScore = calculateReputationScore(isVerified, hugsReceived, userState.baseScoreBonus || 0);
   const currentRank = getReputationRank(reputationScore);
   const rankProgress = getNextRankProgress(reputationScore);
 
-  const effectiveAvatar = getEffectiveAvatar(userState.customAvatarUrl, userState.googleUser?.photoURL);
-  const effectiveDisplayName = userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || `Người dùng #${userState.userAnonNumber}`;
+  const effectiveAvatar = isLoggedInWithGmail
+    ? getEffectiveAvatar(userState.customAvatarUrl, userState.googleUser?.photoURL)
+    : AVATAR_PRESETS[0].url;
+  const effectiveDisplayName = isLoggedInWithGmail
+    ? (userState.verifiedFullName || userState.displayName || userState.googleUser?.displayName || `Người dùng #${userState.userAnonNumber}`)
+    : `Người dùng ẩn danh #${userState.userAnonNumber}`;
   const effectiveCohort = userState.defaultCohort || 'Sinh viên K22';
 
   const showSaveNotification = (msg: string) => {
@@ -346,6 +363,58 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </p>
         </div>
 
+        {/* Not Logged In Notice with Google Sign In */}
+        {!isLoggedInWithGmail && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+            <div className="space-y-0.5">
+              <div className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
+                <span>🎭</span>
+                <span>Chế độ Khách vãng lai Ẩn danh</span>
+              </div>
+              <div className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
+                Đăng nhập Google để đồng bộ xác thực trường học (.edu.vn), nhận điểm uy tín và mở khóa danh tính công khai khi tham gia thảo luận.
+              </div>
+            </div>
+            {onOpenLogin && (
+              <button
+                type="button"
+                onClick={onOpenLogin}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#2A4228] hover:bg-[#1E301D] text-white text-xs font-bold shrink-0 flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95"
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Đăng nhập Google</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Logged in Account info with Sign Out action */}
+        {isLoggedInWithGmail && (
+          <div className="p-2.5 px-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
+              <span className="text-[#5A6D58] dark:text-[#8E9B8A] hidden sm:inline">Tài khoản:</span>
+              <span className="font-semibold text-[#182217] dark:text-[#E8ECE6] truncate">
+                {userState.googleUser?.email}
+              </span>
+            </div>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 font-bold shrink-0 hover:underline ml-2"
+              >
+                Đăng xuất
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Default Posting Mode Toggle Pills (Chỉ hiển thị khi đã đăng nhập) */}
         {isLoggedInWithGmail && (
           <div className="p-2 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E271D] border border-[#C8D2C4] dark:border-[#3A4738] flex items-center justify-between gap-2 max-w-md mx-auto">
@@ -498,7 +567,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#2A4228] text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
-              {userState.isSpecialist ? (
+              {isLoggedInWithGmail && userState.isSpecialist ? (
                 <GraduationCap className="w-5 h-5 text-sky-300" />
               ) : (
                 <Users className="w-5 h-5 text-emerald-300" />
@@ -509,7 +578,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <h3 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
                   Vai trò Đồng Hành
                 </h3>
-                {userState.isPeerMentor && (
+                {isLoggedInWithGmail && userState.isPeerMentor && (
                   <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>{userState.mentorRoleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</span>
@@ -523,17 +592,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {userState.isPeerMentor ? (
+        {isLoggedInWithGmail && userState.isPeerMentor ? (
           <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300">
               <UserCheck className="w-4 h-4 text-emerald-600" />
-              <span>Huy hiệu {userState.mentorRoleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'} đã kích hoạt</span>
+              <span>Huy hiệu {userState.mentorRoleType === 'specialist' || userState.isSpecialist ? 'Chuyên gia tâm lý' : 'Người lắng nghe'} đã kích hoạt</span>
             </div>
-            <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed text-[11px]">
-              Bạn có quyền gửi phản hồi tư vấn cho các lá thư trong <strong>Hộp Thư Tư Vấn</strong> của trường. Cảm ơn sự đồng hành và thấu cảm của bạn!
-            </p>
+            {userState.mentorRoleType === 'specialist' || userState.isSpecialist ? (
+              <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed text-[11px]">
+                Bạn có thẩm quyền chuyên môn xem và gửi phản hồi tham vấn cho các lá thư trong <strong>Hòm Thư Tư Vấn</strong> của trường. Cảm ơn sự đồng hành và thấu cảm chuyên sâu của bạn!
+              </p>
+            ) : (
+              <p className="text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed text-[11px]">
+                Bạn có huy hiệu Người Lắng Nghe uy tín khi phản hồi, đồng hành và chia sẻ cùng các bạn trong trường. <em>(Lưu ý: Hòm Thư Tư Vấn riêng tư được bảo mật dành riêng cho Chuyên gia tâm lý / Ban Cố Vấn).</em>
+              </p>
+            )}
           </div>
-        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
+        ) : isLoggedInWithGmail && userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
           <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 text-xs space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300">
               <Clock className="w-4 h-4 text-amber-600" />
@@ -543,7 +618,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               Đơn đăng ký <strong>{userState.peerMentorApplication.roleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</strong> của bạn đang được xem xét. Bạn sẽ nhận được thông báo ngay khi hồ sơ được duyệt.
             </p>
           </div>
-        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'rejected' ? (
+        ) : isLoggedInWithGmail && userState.peerMentorApplication && userState.peerMentorApplication.status === 'rejected' ? (
           <div className="p-3.5 rounded-2xl bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 text-xs space-y-2">
             <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300">
               <X className="w-4 h-4 text-rose-600" />
@@ -568,17 +643,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         ) : (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
             <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] leading-relaxed">
-              Bạn muốn trở thành Người lắng nghe hoặc Chuyên gia tâm lý đồng hành cùng các bạn học sinh? Hãy gửi hồ sơ để tham gia!
+              {isLoggedInWithGmail
+                ? 'Bạn muốn trở thành Người lắng nghe hoặc Chuyên gia tâm lý đồng hành cùng các bạn học sinh? Hãy gửi hồ sơ để tham gia!'
+                : 'Bạn muốn trở thành Người lắng nghe hoặc Chuyên gia tâm lý đồng hành cùng các bạn học sinh? Hãy đăng nhập tài khoản để gửi hồ sơ!'}
             </p>
-            {onOpenPeerMentorModal && (
-              <button
-                type="button"
-                onClick={onOpenPeerMentorModal}
-                className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all w-full sm:w-auto justify-center"
-              >
-                <Users className="w-4 h-4" />
-                <span>Đăng ký Đồng Hành</span>
-              </button>
+            {isLoggedInWithGmail ? (
+              onOpenPeerMentorModal && (
+                <button
+                  type="button"
+                  onClick={onOpenPeerMentorModal}
+                  className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all w-full sm:w-auto justify-center"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Đăng ký Đồng Hành</span>
+                </button>
+              )
+            ) : (
+              onOpenLogin && (
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all w-full sm:w-auto justify-center"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Đăng nhập để đăng ký</span>
+                </button>
+              )
             )}
           </div>
         )}
@@ -1048,8 +1138,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       )}
 
-      {/* Role Mode Selector Card */}
-      {setUserState && (
+      {/* Role Mode Selector Card (Chỉ hiển thị khi đã đăng nhập) */}
+      {setUserState && isLoggedInWithGmail && (
         <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-5 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6] flex items-center gap-2">

@@ -181,12 +181,19 @@ export const PeerMentorModal: React.FC<PeerMentorModalProps> = ({
     };
 
     setTimeout(() => {
-      setUserState(prev => ({
-        ...prev,
-        peerMentorApplication: application,
-        isPeerMentor: prev.isPeerMentor,
-        mentorRoleType: prev.mentorRoleType
-      }));
+      setUserState(prev => {
+        const existingVerified = prev.verifiedSchools || [];
+        const hasSchool = existingVerified.some(s => s.id === selectedSchoolId);
+        const updatedVerified = (hasSchool || !selectedSchoolObj) ? existingVerified : [...existingVerified, selectedSchoolObj];
+
+        return {
+          ...prev,
+          verifiedSchools: updatedVerified,
+          peerMentorApplication: application,
+          isPeerMentor: prev.isPeerMentor,
+          mentorRoleType: prev.mentorRoleType
+        };
+      });
 
       if (onSaveApplication) {
         onSaveApplication(application);
