@@ -99,8 +99,13 @@ export default function App() {
     return PUBLIC_GLOBAL_SCHOOL;
   });
 
-  // Persist activeTab to localStorage
+  // Persist activeTab to localStorage and handle special tab redirects
   useEffect(() => {
+    if (activeTab === 'verify') {
+      setIsVerifyOpen(true);
+      setActiveTab('profile');
+      return;
+    }
     try {
       localStorage.setItem('lantern_active_tab', activeTab);
     } catch (e) {
@@ -1793,6 +1798,7 @@ export default function App() {
         openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
         openNotificationsModal={() => setIsNotificationsModalOpen(true)}
         openHealingModal={() => setIsHealingModalOpen(true)}
+        openVerify={() => setIsVerifyOpen(true)}
         unreadNotificationsCount={notifications.filter(n => !n.isRead).length}
         isDesktopCollapsed={isSidebarCollapsed}
         setIsDesktopCollapsed={setIsSidebarCollapsed}
@@ -1810,6 +1816,7 @@ export default function App() {
             setActiveTab={setActiveTab}
             openComposer={() => setIsComposerOpen(true)}
             openEmergency={() => setIsEmergencyOpen(true)}
+            openVerify={() => setIsVerifyOpen(true)}
           />
         )}
 
@@ -1940,7 +1947,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'profile' && (
+        {(activeTab === 'profile' || activeTab === 'verify') && (
           <ProfileView
             userState={userState}
             setUserState={setUserState}

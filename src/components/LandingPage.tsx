@@ -18,6 +18,7 @@ interface LandingPageProps {
   setActiveTab: (tab: ActiveTab) => void;
   openComposer: () => void;
   openEmergency: () => void;
+  openVerify?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -25,7 +26,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onSelectSchool,
   setActiveTab,
   openComposer,
-  openEmergency
+  openEmergency,
+  openVerify
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -169,7 +171,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
             <button
-              onClick={() => setActiveTab('verify')}
+              onClick={() => {
+                if (openVerify) {
+                  openVerify();
+                } else {
+                  setActiveTab('profile');
+                }
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2A4228] text-white text-xs font-bold hover:bg-[#1f311d] transition-all shadow-sm"
             >
               <ShieldCheck className="w-4 h-4" />

@@ -46,6 +46,7 @@ interface NavbarProps {
   openPeerMentorModal?: () => void;
   openNotificationsModal?: () => void;
   openHealingModal?: () => void;
+  openVerify?: () => void;
   unreadNotificationsCount?: number;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
@@ -67,6 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openPeerMentorModal,
   openNotificationsModal,
   openHealingModal,
+  openVerify,
   unreadNotificationsCount = 0,
   isDesktopCollapsed = false,
   setIsDesktopCollapsed
@@ -241,23 +243,45 @@ export const Navbar: React.FC<NavbarProps> = ({
         {!isCollapsed && (
           <div className="ml-4 pl-3 border-l border-[#C8D2C4] dark:border-[#3A4738] flex flex-col gap-1 my-1">
             {userState.verifiedSchools && userState.verifiedSchools.length > 0 ? (
-              userState.verifiedSchools.map((school) => (
+              <>
+                {userState.verifiedSchools.map((school) => (
+                  <button
+                    key={school.id}
+                    onClick={() => selectSchoolAndNavigate(school)}
+                    className={`text-left text-xs py-1.5 px-2 rounded-lg truncate transition-colors font-semibold flex items-center gap-1.5 ${
+                      selectedSchool?.id === school.id && activeTab === 'feed'
+                        ? 'text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628]'
+                        : 'text-[#2C382A] dark:text-[#8E9B8A] hover:text-[#0F180E] hover:bg-[#EAF0E8]/50'
+                    }`}
+                  >
+                    <span>✅</span>
+                    <span className="truncate">{school.name}</span>
+                  </button>
+                ))}
                 <button
-                  key={school.id}
-                  onClick={() => selectSchoolAndNavigate(school)}
-                  className={`text-left text-xs py-1.5 px-2 rounded-lg truncate transition-colors font-semibold flex items-center gap-1.5 ${
-                    selectedSchool?.id === school.id && activeTab === 'feed'
-                      ? 'text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628]'
-                      : 'text-[#2C382A] dark:text-[#8E9B8A] hover:text-[#0F180E] hover:bg-[#EAF0E8]/50'
-                  }`}
+                  onClick={() => {
+                    if (openVerify) {
+                      openVerify();
+                    } else {
+                      navigateTo('profile');
+                    }
+                  }}
+                  className="text-left text-[10px] py-1 px-2 rounded-lg text-[#5A6D58] dark:text-[#8E9B8A] hover:text-[#2A4228] hover:bg-[#EAF0E8]/60 dark:hover:bg-white/5 font-semibold flex items-center gap-1 transition-colors mt-0.5"
+                  title="Xác thực thêm trường học khác"
                 >
-                  <span>✅</span>
-                  <span className="truncate">{school.name}</span>
+                  <PlusCircle className="w-3 h-3 text-[#2A4228] dark:text-[#8BA888]" />
+                  <span>+ Thêm trường khác</span>
                 </button>
-              ))
+              </>
             ) : (
               <button
-                onClick={() => navigateTo('verify')}
+                onClick={() => {
+                  if (openVerify) {
+                    openVerify();
+                  } else {
+                    navigateTo('profile');
+                  }
+                }}
                 className="text-left text-[11px] py-1.5 px-2 rounded-lg text-[#2A4228] dark:text-[#8BA888] hover:bg-[#EAF0E8]/60 dark:hover:bg-white/5 font-bold flex items-center gap-1 transition-colors"
                 title="Xác thực thẻ HS/SV để thêm trường của bạn"
               >
