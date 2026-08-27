@@ -766,7 +766,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   <div className="font-bold flex items-center gap-1">
                     <span>🔒 Hòm Thư Tư Vấn</span>
                   </div>
-                  <div className="text-[9px] opacity-80 font-normal leading-tight">Cố vấn / Peer Mentor</div>
+                  <div className="text-[9px] opacity-80 font-normal leading-tight">Chuyên gia Tâm lý</div>
                 </div>
               </button>
             </div>
@@ -778,7 +778,7 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   <span>Hòm Thư Tư Vấn Tâm Lý Trường (Bảo Mật 100% Ẩn Danh)</span>
                 </div>
                 <p className="text-[11px] text-[#2C382A] dark:text-[#A4B5A0] leading-relaxed">
-                  Giải tỏa những áp lực gia đình, bế tắc điểm số hoặc sợ bị dán nhãn tại trường. Bạn luôn xuất hiện dưới dạng <strong>Mã số ẩn danh #{anonNumber}</strong>. Chỉ Ban Cố Vấn và Peer Mentor của trường mới có quyền phản hồi để bảo đảm tính an toàn & thấu cảm.
+                  Giải tỏa những áp lực gia đình, bế tắc điểm số hoặc sợ bị dán nhãn tại trường. Bạn luôn xuất hiện dưới dạng <strong>Mã số ẩn danh #{anonNumber}</strong>. Chỉ Chuyên Gia Tâm Lý và Ban Cố Vấn của trường mới có quyền xem và phản hồi để bảo đảm chất lượng tham vấn & tính an toàn tuyệt đối.
                 </p>
               </div>
             )}

@@ -233,13 +233,64 @@ export const fetchAllPostsFromFirestore = async (): Promise<Post[]> => {
       }
 
       const createdAt = data.createdAt || (docSnap.id.match(/\b(17\d{10,12})\b/) ? parseInt(docSnap.id.match(/\b(17\d{10,12})\b/)![1], 10) : undefined);
-      posts.push({ id: docSnap.id, ...data, createdAt: createdAt || data.createdAt } as Post);
+      const replies = Array.isArray(data.replies) ? data.replies : [];
+      const repliesCount = typeof data.repliesCount === 'number' ? data.repliesCount : replies.length;
+
+      posts.push({
+        id: docSnap.id,
+        ...data,
+        replies,
+        repliesCount,
+        createdAt: createdAt || data.createdAt
+      } as Post);
     });
     return posts.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
   } catch (err) {
     console.warn('Fetch posts from Firestore:', err);
     return [];
   }
+};
+
+export const listenToPostsFromFirestore = (callback: (posts: Post[]) => void) => {
+  const postsRef = collection(db, 'posts');
+  return onSnapshot(postsRef, (snapshot) => {
+    if (snapshot.empty) {
+      callback([]);
+      return;
+    }
+    const posts: Post[] = [];
+    const now = Date.now();
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (docSnap.id.startsWith('post-') && data.authorAnonId === 'Người dùng ẩn danh #492') {
+        return;
+      }
+
+      const hasExpired = (data.expiresAt && now > data.expiresAt) || 
+                        (data.isAnonymousGuest && data.createdAt && (now - data.createdAt > FOURTEEN_DAYS_MS));
+
+      if (hasExpired) {
+        return;
+      }
+
+      const createdAt = data.createdAt || (docSnap.id.match(/\b(17\d{10,12})\b/) ? parseInt(docSnap.id.match(/\b(17\d{10,12})\b/)![1], 10) : undefined);
+      const replies = Array.isArray(data.replies) ? data.replies : [];
+      const repliesCount = typeof data.repliesCount === 'number' ? data.repliesCount : replies.length;
+
+      posts.push({
+        id: docSnap.id,
+        ...data,
+        replies,
+        repliesCount,
+        createdAt: createdAt || data.createdAt
+      } as Post);
+    });
+    callback(posts.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0))));
+  }, (err) => {
+    console.warn('Listen to posts from Firestore error:', err);
+  });
 };
 
 // Helper to strip undefined values before passing objects to Firestore
@@ -267,9 +318,11 @@ export const createPostInFirestore = async (newPost: Post) => {
     const postRef = doc(db, 'posts', newPost.id);
     const sanitizedData = sanitizeForFirestore({
       ...newPost,
-      createdAt: Date.now()
+      replies: Array.isArray(newPost.replies) ? newPost.replies : [],
+      repliesCount: newPost.replies ? newPost.replies.length : 0,
+      createdAt: newPost.createdAt || Date.now()
     });
-    await setDoc(postRef, sanitizedData);
+    await setDoc(postRef, sanitizedData, { merge: true });
     return newPost.id;
   } catch (err) {
     console.error('Create post error:', err);
@@ -280,10 +333,10 @@ export const createPostInFirestore = async (newPost: Post) => {
 export const updatePostStatusInFirestore = async (postId: string, status: 'approved' | 'flagged' | 'rejected', flagReason?: string) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
+    await setDoc(postRef, {
       status,
       flagReason: flagReason || null
-    });
+    }, { merge: true });
   } catch (err) {
     console.error('Update post status error:', err);
   }
@@ -292,21 +345,24 @@ export const updatePostStatusInFirestore = async (postId: string, status: 'appro
 export const addReplyToPostInFirestore = async (postId: string, newReply: Reply, updatedReplies: Reply[]) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
-      replies: sanitizeForFirestore(updatedReplies),
-      repliesCount: updatedReplies.length
-    });
+    const sanitizedReplies = sanitizeForFirestore(updatedReplies);
+    await setDoc(postRef, {
+      replies: sanitizedReplies,
+      repliesCount: updatedReplies.length,
+      lastReplyAt: Date.now()
+    }, { merge: true });
   } catch (err) {
     console.error('Add reply error:', err);
+    throw err;
   }
 };
 
 export const toggleLikePostInFirestore = async (postId: string, isLiked: boolean) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
+    await setDoc(postRef, {
       likesCount: increment(isLiked ? 1 : -1)
-    });
+    }, { merge: true });
   } catch (err) {
     console.error('Toggle like error:', err);
   }
@@ -315,9 +371,9 @@ export const toggleLikePostInFirestore = async (postId: string, isLiked: boolean
 export const toggleHugPostInFirestore = async (postId: string, isHugged: boolean) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
+    await setDoc(postRef, {
       hugsCount: increment(isHugged ? 1 : -1)
-    });
+    }, { merge: true });
   } catch (err) {
     console.error('Toggle hug error:', err);
   }
@@ -326,13 +382,13 @@ export const toggleHugPostInFirestore = async (postId: string, isHugged: boolean
 export const updatePostInFirestore = async (postId: string, updateData: { title: string; content: string; tags: string[]; isPublic?: boolean }) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
+    await setDoc(postRef, {
       title: updateData.title,
       content: updateData.content,
       tags: updateData.tags,
       isPublic: updateData.isPublic ?? false,
       updatedAt: Date.now()
-    });
+    }, { merge: true });
   } catch (err) {
     console.error('Update post error:', err);
     throw err;

@@ -737,14 +737,14 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
               <span>Hộp Thư Tư Vấn Tâm Lý Trường Học • Bảo Mật 100% Danh Tính</span>
             </div>
             <p className="text-xs text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed">
-              Lá thư này được bảo vệ trong Hộp Thư Tư Vấn của <strong>{post.schoolName}</strong> nhằm giải quyết rào cản tâm lý học đường và khoảng cách gia đình. Mọi phản hồi đều đến từ <strong>Ban Cố Vấn</strong> hoặc <strong>Người Lắng Nghe Đồng Hành (Peer Mentor)</strong> đã qua xác thực.
+              Lá thư này được bảo vệ trong Hộp Thư Tư Vấn của <strong>{post.schoolName}</strong> nhằm giải quyết rào cản tâm lý học đường và khoảng cách gia đình. Mọi phản hồi tham vấn chuyên sâu đều đến từ <strong>Ban Cố Vấn</strong> hoặc <strong>Chuyên Gia Tâm Lý Học Đường</strong> đã qua kiểm duyệt chuyên môn.
             </p>
           </div>
         )}
 
         {/* Reply Input Bar Sticky Centered at Bottom */}
         <div className="sticky bottom-0 z-30 pt-4 pb-2 bg-gradient-to-t from-[var(--bg-main)] via-[var(--bg-main)]/95 to-transparent w-full backdrop-blur-sm mt-4">
-          {post.isCounselingMailbox && !(isAuthor || userState?.isPeerMentor || userState?.isCampusCounselor || userState?.userRole === 'peer_listener' || userState?.userRole === 'mentor' || userState?.userRole === 'admin_moderator') ? (
+          {post.isCounselingMailbox && !(isAuthor || userState?.isSpecialist || userState?.isCampusCounselor || userState?.userRole === 'mentor' || userState?.userRole === 'admin_moderator' || userState?.mentorRoleType === 'specialist') ? (
             <div className="p-4 rounded-3xl bg-emerald-900/10 dark:bg-[#1E271D] border border-emerald-600/30 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
@@ -752,10 +752,10 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-emerald-950 dark:text-emerald-200">
-                    Hòm Thư Tư Vấn Giới Hạn Quyền Phản Hồi
+                    Hòm Thư Tư Vấn Dành Riêng Cho Chuyên Gia Tâm Lý
                   </h4>
                   <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
-                    Chỉ Ban Cố Vấn & Peer Mentor của trường mới có quyền gửi lời an ủi để bảo đảm chất lượng và an toàn tâm lý.
+                    Chỉ Chuyên Gia Tâm Lý & Ban Cố Vấn chuyên môn mới có quyền phản hồi để bảo đảm chất lượng tham vấn và an toàn tâm lý cho học sinh.
                   </p>
                 </div>
               </div>
@@ -766,7 +766,7 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   className="px-4 py-2 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Đăng ký làm Peer Mentor</span>
+                  <span>Đăng ký làm Chuyên gia Tâm lý</span>
                 </button>
               )}
             </div>

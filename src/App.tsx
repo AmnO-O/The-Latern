@@ -39,6 +39,7 @@ import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
 import {
   fetchAllPostsFromFirestore,
+  listenToPostsFromFirestore,
   createPostInFirestore,
   addReplyToPostInFirestore,
   toggleLikePostInFirestore,
@@ -152,8 +153,30 @@ export default function App() {
 
     return newSchool;
   };
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>(() => {
+    try {
+      const cached = localStorage.getItem('lantern_cached_posts');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached posts from localStorage:', e);
+    }
+    return [];
+  });
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  // Persist posts to localStorage cache
+  useEffect(() => {
+    if (posts.length > 0) {
+      try {
+        localStorage.setItem('lantern_cached_posts', JSON.stringify(posts));
+      } catch (e) {
+        console.warn('Failed to save posts to localStorage:', e);
+      }
+    }
+  }, [posts]);
 
   // Persist and restore selectedPost when navigating to/from post_detail
   useEffect(() => {
@@ -854,13 +877,18 @@ export default function App() {
     };
   }, [currentUserId, userDisplayName, userState.userAnonNumber, myPostIds]);
 
-  // Load posts and listen to schools from Firestore on mount
+  // Load and listen to posts and schools from Firestore in real-time
   useEffect(() => {
-    fetchAllPostsFromFirestore().then((firestorePosts) => {
-      setPosts(firestorePosts || []);
-    }).catch(err => {
-      console.warn('Could not load Firestore posts:', err);
-      setPosts([]);
+    const unsubscribePosts = listenToPostsFromFirestore((firestorePosts) => {
+      if (firestorePosts) {
+        setPosts(firestorePosts);
+        // Also update selectedPost if activeTab is post_detail
+        setSelectedPost(prev => {
+          if (!prev) return null;
+          const fresh = firestorePosts.find(p => p.id === prev.id);
+          return fresh || prev;
+        });
+      }
     });
 
     const unsubscribeSchools = listenToSchoolsFromFirestore((updatedSchools) => {
@@ -874,6 +902,7 @@ export default function App() {
     });
 
     return () => {
+      if (unsubscribePosts) unsubscribePosts();
       if (unsubscribeSchools) unsubscribeSchools();
     };
   }, []);
@@ -1125,12 +1154,15 @@ export default function App() {
           isHugged: true
         };
 
+        const currentReplies = Array.isArray(postObj.replies) ? postObj.replies : [];
+        const updatedReplies = [...currentReplies, aiReply];
+
         setPosts(prevPosts => prevPosts.map(p => {
           if (p.id === postId) {
             return {
               ...p,
-              repliesCount: p.repliesCount + 1,
-              replies: [...p.replies, aiReply]
+              repliesCount: (p.repliesCount || 0) + 1,
+              replies: updatedReplies
             };
           }
           return p;
@@ -1139,10 +1171,15 @@ export default function App() {
         if (selectedPost && selectedPost.id === postId) {
           setSelectedPost(prev => prev ? {
             ...prev,
-            repliesCount: prev.repliesCount + 1,
-            replies: [...prev.replies, aiReply]
+            repliesCount: (prev.repliesCount || 0) + 1,
+            replies: updatedReplies
           } : null);
         }
+
+        // Persist AI reply to Firestore
+        addReplyToPostInFirestore(postId, aiReply, updatedReplies).catch(err => {
+          console.warn('Firestore sync AI reply error:', err);
+        });
       }
     } catch (err) {
       console.error('AI Reply error:', err);
@@ -1328,12 +1365,20 @@ export default function App() {
       authorName = `#${commenterNum}`;
     }
 
+    // Determine author role dynamically
+    let assignedRole: 'student' | 'peer_listener' | 'expert' = 'student';
+    if (userState.userRole === 'mentor' || userState.isSpecialist || userState.mentorRoleType === 'specialist') {
+      assignedRole = 'expert';
+    } else if (userState.userRole === 'peer_listener' || userState.isPeerMentor || userState.mentorRoleType === 'peer_listener') {
+      assignedRole = 'peer_listener';
+    }
+
     const newReply: Reply = {
       id: `reply-${Date.now()}`,
       postId: postId,
       authorUid: currentUserId,
       authorName: authorName,
-      authorRole: 'student',
+      authorRole: assignedRole,
       authorReputationScore: userState.reputationScore,
       isOP: isOP,
       isVerifiedBadge: userState.verificationStatus === 'verified',
@@ -1351,13 +1396,14 @@ export default function App() {
 
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
-        const updatedReplies = [...p.replies, newReply];
+        const currentReplies = Array.isArray(p.replies) ? p.replies : [];
+        const updatedReplies = [...currentReplies, newReply];
         addReplyToPostInFirestore(postId, newReply, updatedReplies).catch(err => {
           console.warn('Firestore sync reply error:', err);
         });
         return {
           ...p,
-          repliesCount: p.repliesCount + 1,
+          repliesCount: (p.repliesCount || 0) + 1,
           replies: updatedReplies
         };
       }
@@ -1367,8 +1413,8 @@ export default function App() {
     if (selectedPost && selectedPost.id === postId) {
       setSelectedPost(prev => prev ? {
         ...prev,
-        repliesCount: prev.repliesCount + 1,
-        replies: [...prev.replies, newReply]
+        repliesCount: (prev.repliesCount || 0) + 1,
+        replies: [...(Array.isArray(prev.replies) ? prev.replies : []), newReply]
       } : null);
     }
 

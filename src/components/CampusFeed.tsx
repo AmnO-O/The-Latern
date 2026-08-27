@@ -104,13 +104,14 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
     setScopeFilter(target);
   };
 
-  const isMentorOrCounselor = Boolean(
+  // Check if current user is a Certified Psychological Specialist or Campus Counselor
+  const isSpecialistOrCounselor = Boolean(
     isAdmin ||
-    userState?.isPeerMentor ||
+    userState?.isSpecialist ||
     userState?.isCampusCounselor ||
-    userState?.userRole === 'peer_listener' ||
     userState?.userRole === 'mentor' ||
-    userState?.userRole === 'admin_moderator'
+    userState?.userRole === 'admin_moderator' ||
+    userState?.mentorRoleType === 'specialist'
   );
 
   const isAuthorOfPost = (p: Post) => {
@@ -135,17 +136,17 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
 
     if (scopeFilter === 'counseling') {
       if (!p.isCounselingMailbox) return false;
-      // Regular students only see their own counseling submissions
-      // Mentors/Counselors/Admins see all counseling submissions for this school
-      return isMentorOrCounselor || isAuthorOfPost(p);
+      // Regular students & peer listeners only see their own counseling submissions
+      // Only Certified Specialists / Counselors / Admins see all counseling submissions for this school
+      return isSpecialistOrCounselor || isAuthorOfPost(p);
     }
 
     if (scopeFilter === 'public') return p.isPublic === true && !p.isCounselingMailbox;
     if (scopeFilter === 'campus') return p.isPublic !== true && !p.isCounselingMailbox;
 
-    // In 'all' scope: counseling posts are hidden from non-author regular students
+    // In 'all' scope: counseling posts are hidden from non-specialist students/peer listeners
     if (p.isCounselingMailbox) {
-      return isMentorOrCounselor || isAuthorOfPost(p);
+      return isSpecialistOrCounselor || isAuthorOfPost(p);
     }
 
     return true;
@@ -464,13 +465,13 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
             </div>
             <div className="text-xs space-y-0.5 flex-1">
               <h4 className="font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
-                <span>{isMentorOrCounselor ? '🌿 Chế độ Ban Cố Vấn & Peer Mentor' : '🔒 Hòm Thư Tư Vấn Riêng Tư (Bảo Mật 100%)'}</span>
+                <span>{isSpecialistOrCounselor ? '🌿 Chế độ Chuyên Gia Tâm Lý & Ban Cố Vấn' : '🔒 Hòm Thư Tư Vấn Riêng Tư (Bảo Mật 100%)'}</span>
                 <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.2 rounded-full font-bold">Riêng tư 1-1</span>
               </h4>
               <p className="text-[#42493F] dark:text-[#9DA99B] leading-relaxed text-[11px]">
-                {isMentorOrCounselor
-                  ? `Bạn có thẩm quyền đọc và đồng hành hồi đáp cho các tâm sự học đường cần hỗ trợ tâm lý tại ${school.name}.`
-                  : `Chỉ bạn và Ban Cố Vấn / Peer Mentor trường mới xem được các bức thư của bạn. Các bạn học sinh khác hoàn toàn không thể thấy nội dung này.`}
+                {isSpecialistOrCounselor
+                  ? `Bạn có thẩm quyền chuyên môn đọc và tham vấn chuyên sâu cho các tâm sự học đường cần hỗ trợ tâm lý tại ${school.name}.`
+                  : `Chỉ bạn và Chuyên gia Tâm lý / Cố vấn chuyên môn của trường mới có quyền xem và phản hồi các bức thư tư vấn của bạn. Bạn bè cùng trường và Bạn lắng nghe thông thường không thể thấy nội dung này.`}
               </p>
             </div>
           </div>
@@ -486,17 +487,17 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                 </div>
                 <div className="space-y-1">
                   <h4 className="font-serif italic font-bold text-base text-[#182217] dark:text-[#E8ECE6]">
-                    {isMentorOrCounselor
+                    {isSpecialistOrCounselor
                       ? 'Hòm thư tư vấn hiện đang trống'
                       : 'Bạn chưa gửi bức thư tư vấn nào'}
                   </h4>
                   <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] max-w-sm mx-auto leading-relaxed">
-                    {isMentorOrCounselor
+                    {isSpecialistOrCounselor
                       ? 'Chưa có học sinh nào gửi yêu cầu hỗ trợ tâm lý tại trường này.'
-                      : 'Nếu bạn đang đối diện với áp lực thi cử, gia đình hay tâm sự khó nói, hãy gửi một bức thư ẩn danh để nhận lời khuyên chân thành từ Ban Cố Vấn nhé.'}
+                      : 'Nếu bạn đang đối diện với áp lực thi cử, gia đình hay tâm sự khó nói, hãy gửi một bức thư ẩn danh để nhận lời khuyên chuyên môn từ Chuyên gia Tâm lý nhé.'}
                   </p>
                 </div>
-                {!isMentorOrCounselor && (
+                {!isSpecialistOrCounselor && (
                   <button
                     onClick={openComposer}
                     className="mt-2 px-5 py-2.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
