@@ -39,6 +39,7 @@ import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getEffectiveAvatar } from '../data/avatarPresets';
 import { getFormattedAuthorName, getFormattedReplyAuthorName } from '../lib/authorUtils';
 import { PublicProfileTarget } from './PublicProfileModal';
+import { listenToSinglePostInFirestore } from '../lib/firebase';
 
 interface PostDetailViewProps {
   post: Post;
@@ -117,20 +118,41 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
   const replyInputRef = useRef<HTMLInputElement>(null);
 
+  // Real-time synchronization with Firestore for this post and its replies
   useEffect(() => {
-    if (Array.isArray(post.replies)) {
+    // Initial sync from props
+    if (Array.isArray(post.replies) && post.replies.length > 0) {
       setLocalReplies(prev => {
         const replyMap = new Map<string, Reply>();
-        (post.replies || []).forEach(r => replyMap.set(r.id, r));
+        post.replies.forEach(r => replyMap.set(r.id, r));
         prev.forEach(r => {
-          if (!replyMap.has(r.id)) {
-            replyMap.set(r.id, r);
-          }
+          if (!replyMap.has(r.id)) replyMap.set(r.id, r);
         });
         return Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       });
     }
-  }, [post.replies]);
+
+    if (!post.id) return;
+
+    // Real-time Firestore snapshot listener across all browsers
+    const unsubscribe = listenToSinglePostInFirestore(post.id, (freshPostData, freshReplies) => {
+      if (freshReplies && freshReplies.length > 0) {
+        setLocalReplies(prev => {
+          const replyMap = new Map<string, Reply>();
+          freshReplies.forEach(r => replyMap.set(r.id, r));
+          // Keep any immediate optimistic replies
+          prev.forEach(r => {
+            if (!replyMap.has(r.id)) replyMap.set(r.id, r);
+          });
+          return Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [post.id, post.replies]);
 
   // Zen Focus Reading Mode States
   const [isFocusReadingMode, setIsFocusReadingMode] = useState(false);

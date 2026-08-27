@@ -283,15 +283,82 @@ export const listenToPostsFromFirestore = (callback: (posts: Post[]) => void) =>
       const replies = Array.isArray(data.replies) ? data.replies : [];
       const repliesCount = typeof data.repliesCount === 'number' ? data.repliesCount : replies.length;
 
-      posts.push({
+      const rawPost: Post = {
         id: docSnap.id,
         ...data,
         replies,
         repliesCount,
         createdAt: createdAt || data.createdAt
-      } as Post);
+      } as Post;
+
+      posts.push(rawPost);
     });
-    callback(posts.sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0))));
+
+    // Robust deduplication pass
+    const dedupedMap = new Map<string, Post>();
+    const signatureMap = new Map<string, Post>();
+
+    posts.forEach(p => {
+      // 1. By Exact ID
+      if (dedupedMap.has(p.id)) {
+        const existing = dedupedMap.get(p.id)!;
+        const mergedRepliesMap = new Map<string, Reply>();
+        (existing.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
+        (p.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
+        const mergedReplies = Array.from(mergedRepliesMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        dedupedMap.set(p.id, {
+          ...existing,
+          ...p,
+          replies: mergedReplies,
+          repliesCount: Math.max(existing.repliesCount || 0, p.repliesCount || 0, mergedReplies.length),
+          hugsCount: Math.max(existing.hugsCount || 0, p.hugsCount || 0),
+          likesCount: Math.max(existing.likesCount || 0, p.likesCount || 0)
+        });
+        return;
+      }
+
+      // 2. By Semantic Signature (Title + Content + School + Author)
+      const sig = `${p.schoolId || 'global'}__${(p.title || '').trim()}__${(p.content || '').trim()}__${(p.authorAnonId || p.authorUid || '')}`;
+      if (signatureMap.has(sig)) {
+        const existing = signatureMap.get(sig)!;
+        const mergedRepliesMap = new Map<string, Reply>();
+        (existing.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
+        (p.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
+        const mergedReplies = Array.from(mergedRepliesMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        
+        // Pick primary document (keep the one with newer createdAt or higher replies)
+        const primary = (p.repliesCount || 0) >= (existing.repliesCount || 0) ? p : existing;
+        const duplicate = primary.id === p.id ? existing : p;
+
+        const merged: Post = {
+          ...duplicate,
+          ...primary,
+          replies: mergedReplies,
+          repliesCount: Math.max(existing.repliesCount || 0, p.repliesCount || 0, mergedReplies.length),
+          hugsCount: Math.max(existing.hugsCount || 0, p.hugsCount || 0),
+          likesCount: Math.max(existing.likesCount || 0, p.likesCount || 0)
+        };
+
+        // Update map
+        dedupedMap.delete(duplicate.id);
+        dedupedMap.set(primary.id, merged);
+        signatureMap.set(sig, merged);
+
+        // Async clean up redundant duplicate document in Firestore
+        if (duplicate.id !== primary.id) {
+          try {
+            deleteDoc(doc(db, 'posts', duplicate.id)).catch(() => {});
+          } catch (_) {}
+        }
+        return;
+      }
+
+      dedupedMap.set(p.id, p);
+      signatureMap.set(sig, p);
+    });
+
+    const finalPosts = Array.from(dedupedMap.values()).sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
+    callback(finalPosts);
   }, (err) => {
     console.warn('Listen to posts from Firestore error:', err);
   });
@@ -388,6 +455,59 @@ export const addReplyToPostInFirestore = async (
     console.error('Add reply to Firestore error:', err);
     throw err;
   }
+};
+
+export const listenToSinglePostInFirestore = (
+  postId: string, 
+  callback: (postData: Partial<Post> | null, replies: Reply[]) => void
+) => {
+  const postRef = doc(db, 'posts', postId);
+  const repliesSubcolRef = collection(db, 'posts', postId, 'replies');
+
+  let docReplies: Reply[] = [];
+  let subcolReplies: Reply[] = [];
+  let currentPostData: Partial<Post> | null = null;
+
+  const emit = () => {
+    const replyMap = new Map<string, Reply>();
+    subcolReplies.forEach(r => replyMap.set(r.id, r));
+    docReplies.forEach(r => {
+      if (!replyMap.has(r.id)) {
+        replyMap.set(r.id, r);
+      }
+    });
+    const combinedReplies = Array.from(replyMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    callback(currentPostData, combinedReplies);
+  };
+
+  const unsubDoc = onSnapshot(postRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      currentPostData = { id: docSnap.id, ...data };
+      if (Array.isArray(data.replies)) {
+        docReplies = data.replies;
+      }
+      emit();
+    }
+  }, (err) => {
+    console.warn('listenToSinglePost doc snapshot error:', err);
+  });
+
+  const unsubReplies = onSnapshot(repliesSubcolRef, (snap) => {
+    const list: Reply[] = [];
+    snap.forEach((d) => {
+      list.push({ id: d.id, ...d.data() } as Reply);
+    });
+    subcolReplies = list;
+    emit();
+  }, (err) => {
+    console.warn('listenToSinglePost subcollection error:', err);
+  });
+
+  return () => {
+    unsubDoc();
+    unsubReplies();
+  };
 };
 
 export const toggleLikePostInFirestore = async (postId: string, isLiked: boolean) => {

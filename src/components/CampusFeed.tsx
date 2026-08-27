@@ -170,7 +170,7 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   const tagsList = ['Tất cả', 'Áp lực học tập', 'Gia đình', 'Định hướng tương lai', 'Sự ấm áp'];
   const gradeFilters = ['Tất cả khối', 'Khối 12', 'Khối 11', 'Khối 10', 'Sinh viên / Cựu HS'];
 
-  const filteredPosts = scopeFilteredPosts.filter(p => {
+  const rawFilteredPosts = scopeFilteredPosts.filter(p => {
     const matchesTag = selectedTag === 'Tất cả' || p.tags.includes(selectedTag);
 
     // Grade / Cohort filter matching
@@ -189,6 +189,18 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                           p.content.toLowerCase().includes(feedSearch.toLowerCase()) ||
                           (p.authorClassBadge || '').toLowerCase().includes(feedSearch.toLowerCase());
     return matchesTag && matchesGrade && matchesSearch;
+  });
+
+  // Ensure no duplicate post IDs or duplicate titles/contents rendered
+  const seenPostIds = new Set<string>();
+  const seenPostSigs = new Set<string>();
+  const filteredPosts = rawFilteredPosts.filter(p => {
+    if (seenPostIds.has(p.id)) return false;
+    const sig = `${(p.title || '').trim()}__${(p.content || '').trim()}__${p.authorAnonId || ''}`;
+    if (seenPostSigs.has(sig)) return false;
+    seenPostIds.add(p.id);
+    seenPostSigs.add(sig);
+    return true;
   });
 
   return (

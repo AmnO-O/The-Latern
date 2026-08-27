@@ -1244,8 +1244,8 @@ export default function App() {
         ] : []
       };
 
-      setPosts([newPost, ...posts]);
-      setMyPostIds(prev => [...prev, generatedPostId]);
+      setPosts(prev => [newPost, ...prev.filter(p => p.id !== newPost.id)]);
+      setMyPostIds(prev => [...new Set([...prev, generatedPostId])]);
 
       // Async write to Firestore
       createPostInFirestore(newPost).catch(err => {
