@@ -29,7 +29,7 @@ import {
   increment
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
-import { Post, Reply, UserState, School } from '../types';
+import { Post, Reply, UserState, School, CounselingAppointment, AppointmentStatus, HealingNote } from '../types';
 import { INITIAL_SCHOOLS } from '../data/mockData';
 
 // Initialize Firebase
@@ -1061,4 +1061,172 @@ export const clearDirectThreadHistoryInFirestore = async (threadId: string) => {
     console.error('Clear thread history error:', err);
   }
 };
+
+// ==========================================
+// COUNSELING APPOINTMENTS & GOOGLE MEET
+// ==========================================
+
+export const createAppointmentInFirestore = async (appointment: CounselingAppointment) => {
+  try {
+    const apptRef = doc(db, 'counseling_appointments', appointment.id);
+    await setDoc(apptRef, sanitizeForFirestore({
+      ...appointment,
+      updatedAt: Date.now()
+    }));
+    return appointment;
+  } catch (err) {
+    console.error('Create appointment in Firestore error:', err);
+    throw err;
+  }
+};
+
+export const updateAppointmentStatusInFirestore = async (
+  appointmentId: string, 
+  status: AppointmentStatus, 
+  meetUrl?: string,
+  confirmedAt?: number
+) => {
+  try {
+    const apptRef = doc(db, 'counseling_appointments', appointmentId);
+    const updateData: any = {
+      status,
+      updatedAt: Date.now()
+    };
+    if (meetUrl) updateData.meetUrl = meetUrl;
+    if (confirmedAt) updateData.confirmedAt = confirmedAt;
+    await updateDoc(apptRef, updateData);
+  } catch (err) {
+    console.error('Update appointment status in Firestore error:', err);
+  }
+};
+
+export const listenToAppointmentsInFirestore = (
+  callback: (appointments: CounselingAppointment[]) => void
+) => {
+  const apptsCol = collection(db, 'counseling_appointments');
+  return onSnapshot(apptsCol, (snapshot) => {
+    const list: CounselingAppointment[] = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as CounselingAppointment);
+    });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    callback(list);
+  }, (err) => {
+    console.warn('Listen to appointments in Firestore error:', err);
+  });
+};
+
+export const deleteAppointmentFromFirestore = async (appointmentId: string) => {
+  try {
+    const apptRef = doc(db, 'counseling_appointments', appointmentId);
+    await deleteDoc(apptRef);
+  } catch (err) {
+    console.error('Delete appointment in Firestore error:', err);
+  }
+};
+
+// ==========================================
+// HEALING NOTES & FEEDBACK WALL
+// ==========================================
+
+export const INITIAL_DEFAULT_HEALING_NOTES: HealingNote[] = [
+  {
+    id: 'note-1',
+    category: 'community_kindness',
+    senderName: 'Một người bạn đi ngang qua',
+    schoolName: 'THPT Chuyên Hà Nội - Amsterdam',
+    message: 'Dù ngày hôm nay có mệt mỏi thế nào, bạn cũng đã làm rất tốt rồi. Đừng quên uống một ly nước ấm và ngủ sớm nhé! 🌿',
+    createdAt: Date.now() - 7200000,
+    likesCount: 18,
+    tagColor: 'emerald'
+  },
+  {
+    id: 'note-2',
+    category: 'dev_thanks',
+    senderName: 'Cậu bạn khối A',
+    schoolName: 'Đại học Bách Khoa Hà Nội',
+    message: 'Cảm ơn Dev Team đã tạo ra một góc trú ẩn không phán xét. Những đêm áp lực đồ án vào đây đọc thư thấy nhẹ nhõm hơn nhiều.',
+    createdAt: Date.now() - 14400000,
+    likesCount: 24,
+    tagColor: 'amber'
+  },
+  {
+    id: 'note-3',
+    category: 'community_kindness',
+    senderName: 'Họa sĩ mộng mơ #204',
+    schoolName: 'Đại học Kiến Trúc TP.HCM',
+    message: 'Hoa sẽ nở đúng mùa, và bạn cũng sẽ tỏa sáng theo cách riêng của mình. Hãy vững tin nhé! ✨',
+    createdAt: Date.now() - 28800000,
+    likesCount: 31,
+    tagColor: 'rose'
+  },
+  {
+    id: 'note-4',
+    category: 'idea_feedback',
+    senderName: 'Peer Listener K23',
+    schoolName: 'ĐH KHXH&NV - ĐHQG TP.HCM',
+    message: 'Hy vọng app sẽ phát triển thêm các workshop nhỏ về kỹ năng lắng nghe và sơ cứu tâm lý cho các bạn học sinh.',
+    createdAt: Date.now() - 43200000,
+    likesCount: 15,
+    tagColor: 'sky'
+  }
+];
+
+export const createHealingNoteInFirestore = async (note: HealingNote) => {
+  try {
+    const noteRef = doc(db, 'healing_notes', note.id);
+    await setDoc(noteRef, sanitizeForFirestore({
+      ...note,
+      createdAt: note.createdAt || Date.now(),
+      likesCount: note.likesCount || 1
+    }));
+    return note;
+  } catch (err) {
+    console.error('Create healing note in Firestore error:', err);
+    throw err;
+  }
+};
+
+export const likeHealingNoteInFirestore = async (noteId: string) => {
+  try {
+    const noteRef = doc(db, 'healing_notes', noteId);
+    await updateDoc(noteRef, {
+      likesCount: increment(1)
+    });
+  } catch (err) {
+    console.error('Like healing note in Firestore error:', err);
+  }
+};
+
+export const listenToHealingNotesFromFirestore = (
+  callback: (notes: HealingNote[]) => void
+) => {
+  const notesCol = collection(db, 'healing_notes');
+  return onSnapshot(notesCol, async (snapshot) => {
+    if (snapshot.empty) {
+      // Seed default notes on first run if completely empty
+      try {
+        for (const defaultNote of INITIAL_DEFAULT_HEALING_NOTES) {
+          const docRef = doc(db, 'healing_notes', defaultNote.id);
+          await setDoc(docRef, sanitizeForFirestore(defaultNote));
+        }
+      } catch (seedErr) {
+        console.warn('Initial healing notes seed warning:', seedErr);
+      }
+      callback(INITIAL_DEFAULT_HEALING_NOTES);
+      return;
+    }
+
+    const list: HealingNote[] = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as HealingNote);
+    });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    callback(list);
+  }, (err) => {
+    console.warn('Listen to healing notes in Firestore error:', err);
+  });
+};
+
+
 

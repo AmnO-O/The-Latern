@@ -19,11 +19,21 @@ import {
   Ban,
   Brain,
   MessageSquareHeart,
-  Lightbulb
+  Lightbulb,
+  Video,
+  Calendar,
+  CalendarPlus,
+  Plus,
+  Trash2,
+  ExternalLink,
+  Lock,
+  Building
 } from 'lucide-react';
-import { Post, PeerMentorApplication, ListenerReport } from '../types';
+import { Post, PeerMentorApplication, ListenerReport, CounselingAppointment, AppointmentStatus } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getFormattedAuthorName } from '../lib/authorUtils';
+import { GoogleMeetCard } from './GoogleMeetCard';
+import { CounselingScheduleModal } from './CounselingScheduleModal';
 
 interface MentorDashboardProps {
   posts: Post[];
@@ -35,6 +45,10 @@ interface MentorDashboardProps {
   onRejectApplication?: (applicationId: string, reason?: string) => void;
   reports?: ListenerReport[];
   onResolveReport?: (reportId: string, action: 'ban_listener' | 'dismiss') => void;
+  appointments?: CounselingAppointment[];
+  onUpdateAppointmentStatus?: (appointmentId: string, status: AppointmentStatus) => void;
+  onDeleteAppointment?: (appointmentId: string) => void;
+  onCreateAppointment?: (appointment: CounselingAppointment) => void;
 }
 
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
@@ -46,14 +60,20 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   onApproveApplication,
   onRejectApplication,
   reports = [],
-  onResolveReport
+  onResolveReport,
+  appointments = [],
+  onUpdateAppointmentStatus,
+  onDeleteAppointment,
+  onCreateAppointment
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_applications' | 'reports_queue' | 'all_master_feed' | 'mentor_queue'>('mentor_applications');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'mentor_applications' | 'reports_queue' | 'all_master_feed' | 'mentor_queue' | 'appointments'>('mentor_applications');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'public' | 'campus'>('all');
   const [appStatusFilter, setAppStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [appointmentStatusFilter, setAppointmentStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
   const [replyInput, setReplyInput] = useState<{ [postId: string]: string }>({});
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isNewAppointmentModalOpen, setIsNewAppointmentModalOpen] = useState(false);
   
   // Rejection modal state
   const [rejectingAppId, setRejectingAppId] = useState<string | null>(null);
@@ -192,6 +212,21 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           >
             <GraduationCap className="w-3.5 h-3.5" />
             <span>Tư Vấn</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('appointments')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+              activeTab === 'appointments' ? 'bg-gradient-to-r from-emerald-700 to-teal-800 text-white font-bold shadow-sm' : 'text-[#42493F] dark:text-[#8E9B8A] hover:text-[#182217]'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5" />
+            <span>Lịch Hẹn & Meet</span>
+            {appointments.filter(a => a.status === 'pending' || a.status === 'confirmed').length > 0 && (
+              <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                {appointments.filter(a => a.status === 'pending' || a.status === 'confirmed').length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -736,6 +771,213 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             ))
           )}
         </div>
+      )}
+
+      {/* APPOINTMENTS & GOOGLE MEET TAB */}
+      {activeTab === 'appointments' && (
+        <div className="space-y-4">
+          {/* Header Action Bar */}
+          <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-900/15 via-emerald-950/20 to-teal-950/20 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div>
+              <h2 className="text-base font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-2">
+                <Video className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span>Quản Lý Lịch Hẹn & Google Meet Tham Vấn</span>
+              </h2>
+              <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] mt-0.5">
+                Theo dõi các buổi tham vấn 1-1, vào phòng Google Meet hoặc xác nhận hoàn tất buổi gặp.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Filter by Appointment Status */}
+              <select
+                value={appointmentStatusFilter}
+                onChange={(e) => setAppointmentStatusFilter(e.target.value as any)}
+                className="bg-white dark:bg-[#1E261D] border border-emerald-500/30 rounded-xl py-1.5 px-3 text-xs text-[#182217] dark:text-[#E8ECE6] font-medium"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="pending">⏳ Đang chờ xác nhận</option>
+                <option value="confirmed">✓ Đã xác nhận</option>
+                <option value="completed">🎉 Đã hoàn tất</option>
+                <option value="cancelled">✕ Đã hủy</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setIsNewAppointmentModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white text-xs font-bold shrink-0 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tạo Lịch Mới</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Appointment List */}
+          {(() => {
+            const filteredAppts = appointments.filter(a => {
+              if (appointmentStatusFilter !== 'all' && a.status !== appointmentStatusFilter) return false;
+              if (schoolFilter !== 'all' && a.schoolName && a.schoolName !== schoolFilter) return false;
+              return true;
+            });
+
+            if (filteredAppts.length === 0) {
+              return (
+                <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-12 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 flex items-center justify-center mx-auto text-2xl">
+                    🗓
+                  </div>
+                  <h3 className="font-bold text-sm text-[#182217] dark:text-[#E8ECE6]">
+                    Chưa có lịch hẹn tham vấn nào
+                  </h3>
+                  <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] max-w-md mx-auto leading-relaxed">
+                    Khi học sinh hoặc bạn tạo lịch hẹn Google Meet / gặp trực tiếp, danh sách buổi gặp sẽ xuất hiện tại đây để tiện theo dõi và quản lý.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewAppointmentModalOpen(true)}
+                    className="px-4 py-2 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold inline-flex items-center gap-1.5 active:scale-95 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Lên Lịch Hẹn Đầu Tiên</span>
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredAppts.map(appt => (
+                  <div
+                    key={appt.id}
+                    className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-3xl p-4.5 space-y-3.5 shadow-sm hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xs ${
+                            appt.meetingType === 'google_meet' ? 'bg-emerald-600' : 'bg-amber-600'
+                          }`}>
+                            {appt.meetingType === 'google_meet' ? <Video className="w-4 h-4" /> : <Building className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                              {appt.meetingType === 'google_meet' ? 'Google Meet 1-1' : 'Gặp Trực Tiếp Tại Trường'}
+                            </span>
+                            <h4 className="text-sm font-bold text-[#182217] dark:text-[#E8ECE6] leading-tight">
+                              {appt.topic}
+                            </h4>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
+                          appt.status === 'confirmed'
+                            ? 'bg-emerald-500 text-white'
+                            : appt.status === 'completed'
+                            ? 'bg-blue-500 text-white'
+                            : appt.status === 'cancelled'
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-amber-500 text-white'
+                        }`}>
+                          {appt.status === 'confirmed' ? '✓ Đã xác nhận' : appt.status === 'completed' ? '✓ Đã hoàn tất' : appt.status === 'cancelled' ? '✕ Đã hủy' : '⏳ Đang chờ'}
+                        </span>
+                      </div>
+
+                      {/* Info details */}
+                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-black/5 dark:bg-white/5 text-[11px] text-[#42493F] dark:text-[#C5D0C3]">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span><strong>Ngày:</strong> {appt.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span><strong>Giờ:</strong> {appt.timeSlot}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="truncate"><strong>Cố vấn:</strong> {appt.counselorName}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span className="truncate"><strong>Người nhận:</strong> {appt.participantDisplayName || 'Học sinh ẩn danh'}</span>
+                        </div>
+                      </div>
+
+                      {appt.notes && (
+                        <p className="text-xs text-[#5A6D58] dark:text-[#8E9B8A] italic px-1">
+                          "{appt.notes}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {appt.status !== 'confirmed' && onUpdateAppointmentStatus && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateAppointmentStatus(appt.id, 'confirmed')}
+                            className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-all active:scale-95"
+                          >
+                            Xác nhận
+                          </button>
+                        )}
+                        {appt.status !== 'completed' && onUpdateAppointmentStatus && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateAppointmentStatus(appt.id, 'completed')}
+                            className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-all active:scale-95"
+                          >
+                            Đã hoàn tất
+                          </button>
+                        )}
+                        {onDeleteAppointment && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteAppointment(appt.id)}
+                            className="p-1.5 rounded-xl hover:bg-rose-500/10 text-[#8E9B8A] hover:text-rose-600 transition-colors"
+                            title="Xóa lịch hẹn"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {appt.meetingType === 'google_meet' && appt.meetUrl && (
+                        <a
+                          href={appt.meetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Vào Google Meet</span>
+                          <ExternalLink className="w-3 h-3 opacity-70" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Counseling Schedule Modal Triggered from Dashboard */}
+      {isNewAppointmentModalOpen && (
+        <CounselingScheduleModal
+          isOpen={isNewAppointmentModalOpen}
+          onClose={() => setIsNewAppointmentModalOpen(false)}
+          counselorName="Ban Cố Vấn & Chuyên Gia Tâm Lý"
+          counselorRole="Cố vấn chuyên môn học đường"
+          onConfirmSchedule={(appointment) => {
+            if (onCreateAppointment) {
+              onCreateAppointment(appointment);
+            }
+          }}
+        />
       )}
 
       {/* Modal View Image Proof */}

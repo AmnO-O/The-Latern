@@ -10,7 +10,9 @@ import {
   HealingNote,
   PeerMentorApplication,
   ListenerRatingFeedback,
-  ListenerReport
+  ListenerReport,
+  CounselingAppointment,
+  AppointmentStatus
 } from './types';
 import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
@@ -65,7 +67,11 @@ import {
   logout,
   subscribeToAuthChanges,
   FirestoreThreadDoc,
-  FirestoreMessageItem
+  FirestoreMessageItem,
+  createHealingNoteInFirestore,
+  likeHealingNoteInFirestore,
+  listenToHealingNotesFromFirestore,
+  INITIAL_DEFAULT_HEALING_NOTES
 } from './lib/firebase';
 
 export default function App() {
@@ -358,7 +364,7 @@ export default function App() {
     }
   };
 
-  // Healing Notes & Feedback State
+  // Healing Notes & Feedback State (Real-time Cloud Sync across all machines)
   const [healingNotes, setHealingNotes] = useState<HealingNote[]>(() => {
     try {
       const saved = localStorage.getItem('lantern_healing_notes');
@@ -366,48 +372,7 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to parse healing notes from localStorage:', e);
     }
-    return [
-      {
-        id: 'note-1',
-        category: 'community_kindness',
-        senderName: 'Một người bạn đi ngang qua',
-        schoolName: 'THPT Chuyên Hà Nội - Amsterdam',
-        message: 'Dù ngày hôm nay có mệt mỏi thế nào, bạn cũng đã làm rất tốt rồi. Đừng quên uống một ly nước ấm và ngủ sớm nhé! 🌿',
-        createdAt: Date.now() - 7200000,
-        likesCount: 18,
-        tagColor: 'emerald'
-      },
-      {
-        id: 'note-2',
-        category: 'dev_thanks',
-        senderName: 'Cậu bạn khối A',
-        schoolName: 'Đại học Bách Khoa Hà Nội',
-        message: 'Cảm ơn Dev Team đã tạo ra một góc trú ẩn không phán xét. Những đêm áp lực đồ án vào đây đọc thư thấy nhẹ nhõm hơn nhiều.',
-        createdAt: Date.now() - 14400000,
-        likesCount: 24,
-        tagColor: 'amber'
-      },
-      {
-        id: 'note-3',
-        category: 'community_kindness',
-        senderName: 'Họa sĩ mộng mơ #204',
-        schoolName: 'Đại học Kiến Trúc TP.HCM',
-        message: 'Hoa sẽ nở đúng mùa, và bạn cũng sẽ tỏa sáng theo cách riêng của mình. Hãy vững tin nhé! ✨',
-        createdAt: Date.now() - 28800000,
-        likesCount: 31,
-        tagColor: 'rose'
-      },
-      {
-        id: 'note-4',
-        category: 'idea_feedback',
-        senderName: 'Peer Listener K23',
-        schoolName: 'ĐH KHXH&NV - ĐHQG TP.HCM',
-        message: 'Hy vọng app sẽ phát triển thêm các workshop nhỏ về kỹ năng lắng nghe và sơ cứu tâm lý cho các bạn học sinh.',
-        createdAt: Date.now() - 43200000,
-        likesCount: 15,
-        tagColor: 'sky'
-      }
-    ];
+    return INITIAL_DEFAULT_HEALING_NOTES;
   });
 
   useEffect(() => {
@@ -425,15 +390,25 @@ export default function App() {
       createdAt: Date.now(),
       likesCount: 1,
     };
-    setHealingNotes(prev => [newNote, ...prev]);
+    // Optimistic local update
+    setHealingNotes(prev => [newNote, ...prev.filter(n => n.id !== newNote.id)]);
+    // Persist & sync to Firestore
+    createHealingNoteInFirestore(newNote).catch(err => {
+      console.warn('Create healing note Firestore error:', err);
+    });
   };
 
   const handleLikeHealingNote = (noteId: string) => {
+    // Optimistic local update
     setHealingNotes(prev =>
       prev.map(note =>
-        note.id === noteId ? { ...note, likesCount: note.likesCount + 1 } : note
+        note.id === noteId ? { ...note, likesCount: (note.likesCount || 0) + 1 } : note
       )
     );
+    // Persist & sync to Firestore
+    likeHealingNoteInFirestore(noteId).catch(err => {
+      console.warn('Like healing note Firestore error:', err);
+    });
   };
 
   // Notifications State
@@ -621,6 +596,67 @@ export default function App() {
       }
       return prev;
     });
+  };
+
+  // Counseling Appointments State (Google Meet & In-Person)
+  const [appointments, setAppointments] = useState<CounselingAppointment[]>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_counseling_appointments');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse cached appointments:', e);
+    }
+    return [
+      {
+        id: 'appt-demo-1',
+        counselorName: 'ThS. Tâm lý Minh Đức',
+        counselorRole: 'Chuyên gia Tâm lý Học đường',
+        participantDisplayName: 'Học sinh K22',
+        meetingType: 'google_meet',
+        date: 'Ngày mai (14:00)',
+        timeSlot: '14:00 - 14:45',
+        meetUrl: 'https://meet.google.com/abc-pqrs-xyz',
+        topic: 'Giải tỏa áp lực thi cử và định hướng tâm lý học đường',
+        notes: 'Buổi gặp riêng tư 1-1 hỗ trợ xây dựng lộ trình học tập cân bằng cảm xúc',
+        status: 'confirmed',
+        createdAt: Date.now() - 3600000 * 2,
+        schoolName: 'Đại học Bách Khoa Hà Nội'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('lantern_counseling_appointments', JSON.stringify(appointments));
+    } catch (e) {
+      console.warn('Failed to save appointments to localStorage:', e);
+    }
+  }, [appointments]);
+
+  const handleScheduleAppointment = (newAppt: CounselingAppointment) => {
+    setAppointments(prev => [newAppt, ...prev]);
+    // Send local notification
+    const newNotif: LanternNotification = {
+      id: `notif-appt-${Date.now()}`,
+      type: 'counselor_response',
+      postId: newAppt.relatedPostId || '',
+      postTitle: `Lịch hẹn tham vấn: ${newAppt.topic}`,
+      senderName: newAppt.counselorName || 'Ban Cố Vấn',
+      message: newAppt.meetingType === 'google_meet'
+        ? `Đã lên lịch Google Meet tham vấn vào ${newAppt.date} (${newAppt.timeSlot}). Link: ${newAppt.meetUrl}`
+        : `Đã lên lịch gặp trực tiếp tại ${newAppt.locationName || 'Trường'} vào ${newAppt.date} (${newAppt.timeSlot}).`,
+      createdAt: Date.now(),
+      isRead: false
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const handleUpdateAppointmentStatus = (appointmentId: string, status: AppointmentStatus) => {
+    setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, status } : a));
+  };
+
+  const handleDeleteAppointment = (appointmentId: string) => {
+    setAppointments(prev => prev.filter(a => a.id !== appointmentId));
   };
 
   // User State with local cache restore
@@ -887,9 +923,17 @@ export default function App() {
           const map = new Map<string, DirectThread>();
           map.set(aiThread.id, aiThread);
 
-          firestoreThreads.forEach(ft => {
-            map.set(ft.id, ft);
+          // Preserve any existing local threads
+          prev.forEach(t => {
+            if (t && t.id) map.set(t.id, t);
           });
+
+          // Merge latest firestore threads
+          if (firestoreThreads && firestoreThreads.length > 0) {
+            firestoreThreads.forEach(ft => {
+              if (ft && ft.id) map.set(ft.id, ft);
+            });
+          }
 
           return Array.from(map.values());
         });
@@ -907,7 +951,8 @@ export default function App() {
       if (firestorePosts) {
         setPosts(prevPosts => {
           if (!prevPosts || prevPosts.length === 0) return firestorePosts;
-          return firestorePosts.map(fp => {
+
+          const mergedFirestorePosts = firestorePosts.map(fp => {
             const local = prevPosts.find(p => p.id === fp.id);
             if (!local) return fp;
 
@@ -931,6 +976,13 @@ export default function App() {
               repliesCount: Math.max(fp.repliesCount || 0, mergedReplies.length)
             };
           });
+
+          // Preserve any local recently created posts (created in last 90 seconds) not yet synced
+          const firestoreIds = new Set(firestorePosts.map(p => p.id));
+          const now = Date.now();
+          const pendingLocalPosts = prevPosts.filter(p => !firestoreIds.has(p.id) && (now - (p.createdAt || 0) < 90000));
+
+          return [...pendingLocalPosts, ...mergedFirestorePosts];
         });
 
         // Also update selectedPost if activeTab is post_detail
@@ -972,9 +1024,16 @@ export default function App() {
       }
     });
 
+    const unsubscribeHealingNotes = listenToHealingNotesFromFirestore((updatedNotes) => {
+      if (updatedNotes && updatedNotes.length > 0) {
+        setHealingNotes(updatedNotes);
+      }
+    });
+
     return () => {
       if (unsubscribePosts) unsubscribePosts();
       if (unsubscribeSchools) unsubscribeSchools();
+      if (unsubscribeHealingNotes) unsubscribeHealingNotes();
     };
   }, []);
 
@@ -1153,6 +1212,8 @@ export default function App() {
     authorAnonId?: string;
     authorClassBadge?: string;
     isPublic?: boolean;
+    isCounselingMailbox?: boolean;
+    counselorReplyOnly?: boolean;
     imageUrl?: string;
     imageAnalysis?: any;
     expiryDurationDays?: number;
@@ -1161,7 +1222,16 @@ export default function App() {
     authorDisplayName?: string;
     authorAvatarUrl?: string;
     authorCohort?: string;
+    authorMajor?: string;
   }) => {
+    let moderationResult: {
+      isSafe: boolean;
+      flagReason?: string;
+      suggestion?: string;
+      crisisDetected?: boolean;
+      comfortMessage?: string | null;
+    } = { isSafe: true };
+
     try {
       const response = await fetch('/api/moderate-post', {
         method: 'POST',
@@ -1174,106 +1244,125 @@ export default function App() {
         })
       });
 
-      const result = await response.json();
-
-      if (!result.isSafe) {
-        return {
-          isSafe: false,
-          flagReason: result.flagReason,
-          suggestion: result.suggestion,
-          crisisDetected: result.crisisDetected
-        };
+      if (response.ok) {
+        moderationResult = await response.json();
       }
-
-      // Safe post! Add to state
-      const generatedPostId = `post-${Date.now()}`;
-      const nowTimestamp = Date.now();
-      const expiryDurationDays = postData.expiryDurationDays !== undefined 
-        ? postData.expiryDurationDays 
-        : (userState.isLoggedIn ? 0 : 14);
-      const expiresAt = expiryDurationDays > 0 ? (nowTimestamp + expiryDurationDays * 24 * 60 * 60 * 1000) : undefined;
-      const isAnonymousGuest = postData.isAnonymousGuest !== undefined 
-        ? postData.isAnonymousGuest 
-        : !userState.isLoggedIn;
-
-      const newPost: Post = {
-        id: generatedPostId,
-        authorUid: currentUserId,
-        schoolId: postData.schoolId,
-        schoolName: postData.schoolName,
-        schoolSlug: postData.schoolSlug,
-        authorAnonId: postData.authorAnonId || `#${Math.floor(100 + Math.random() * 899)}`,
-        authorRole: 'student',
-        authorClassBadge: postData.authorClassBadge,
-        authorReputationScore: userState.reputationScore,
-        timestamp: 'Vừa xong',
-        createdAt: nowTimestamp,
-        expiresAt: expiresAt,
-        expiryDurationDays: expiryDurationDays,
-        isAnonymousGuest: isAnonymousGuest,
-        title: postData.title,
-        content: postData.content,
-        tags: postData.tags,
-        likesCount: 0,
-        hugsCount: 1,
-        repliesCount: result.comfortMessage ? 1 : 0,
-        isLiked: false,
-        isHugged: true,
-        status: 'approved',
-        isPublic: postData.isPublic ?? false,
-        imageUrl: postData.imageUrl,
-        imageAnalysis: postData.imageAnalysis,
-        isIdentityPublic: postData.isIdentityPublic,
-        authorDisplayName: postData.authorDisplayName,
-        authorAvatarUrl: postData.authorAvatarUrl,
-        authorCohort: postData.authorCohort,
-        replies: result.comfortMessage ? [
-          {
-            id: `reply-ai-${Date.now()}`,
-            postId: generatedPostId,
-            authorName: 'Ngọn Đèn Thấu Hiểu (AI Companion)',
-            authorRole: 'ai_lantern',
-            isVerifiedBadge: true,
-            authorReputationScore: 99,
-            timestamp: 'Vừa xong',
-            createdAt: Date.now(),
-            content: result.comfortMessage,
-            hugsCount: 1,
-            isHugged: true
-          }
-        ] : []
+    } catch (fetchErr) {
+      console.warn('AI Moderation network notice: allowing local post creation with fallback safety.', fetchErr);
+      moderationResult = {
+        isSafe: true,
+        comfortMessage: 'Cảm ơn bạn đã gửi gắm nỗi lòng cùng Ngọn Đèn. Chúc bạn một ngày bình yên 🌿'
       };
-
-      setPosts(prev => [newPost, ...prev.filter(p => p.id !== newPost.id)]);
-      setMyPostIds(prev => [...new Set([...prev, generatedPostId])]);
-
-      // Async write to Firestore
-      createPostInFirestore(newPost).catch(err => {
-        console.warn('Firestore write warning:', err);
-      });
-      
-      // Switch to feed for that school or global
-      if (postData.isPublic) {
-        setSelectedSchool({
-          id: 'global',
-          name: 'Sảnh Chung Công Khai',
-          slug: 'global',
-          location: 'Toàn quốc',
-          verifiedCount: 1200,
-          letterCount: posts.filter(p => p.isPublic).length + 1,
-          newCount: 42
-        });
-      } else {
-        const targetSchool = schools.find(s => s.id === postData.schoolId) || selectedSchool;
-        setSelectedSchool(targetSchool);
-      }
-      setActiveTab('feed');
-
-      return { isSafe: true };
-    } catch (err) {
-      console.error('Create Post Error:', err);
-      return { isSafe: true };
     }
+
+    if (moderationResult && moderationResult.isSafe === false) {
+      return {
+        isSafe: false,
+        flagReason: moderationResult.flagReason || 'Nội dung có thể chưa phù hợp với nguyên tắc văn minh học đường.',
+        suggestion: moderationResult.suggestion || 'Hãy diễn đạt tâm sự nhẹ nhàng và mang tính sẻ chia hơn.',
+        crisisDetected: moderationResult.crisisDetected
+      };
+    }
+
+    // Safe post! Add to state
+    const generatedPostId = `post-${Date.now()}`;
+    const nowTimestamp = Date.now();
+    const expiryDurationDays = postData.expiryDurationDays !== undefined 
+      ? postData.expiryDurationDays 
+      : (userState.isLoggedIn ? 0 : 14);
+    const expiresAt = expiryDurationDays > 0 ? (nowTimestamp + expiryDurationDays * 24 * 60 * 60 * 1000) : undefined;
+    const isAnonymousGuest = postData.isAnonymousGuest !== undefined 
+      ? postData.isAnonymousGuest 
+      : !userState.isLoggedIn;
+
+    const newPost: Post = {
+      id: generatedPostId,
+      authorUid: currentUserId,
+      schoolId: postData.schoolId,
+      schoolName: postData.schoolName,
+      schoolSlug: postData.schoolSlug,
+      authorAnonId: postData.authorAnonId || `#${Math.floor(100 + Math.random() * 899)}`,
+      authorRole: 'student',
+      authorClassBadge: postData.authorClassBadge,
+      authorReputationScore: userState.reputationScore,
+      timestamp: 'Vừa xong',
+      createdAt: nowTimestamp,
+      expiresAt: expiresAt,
+      expiryDurationDays: expiryDurationDays,
+      isAnonymousGuest: isAnonymousGuest,
+      title: postData.title,
+      content: postData.content,
+      tags: postData.tags,
+      likesCount: 0,
+      hugsCount: 1,
+      repliesCount: moderationResult?.comfortMessage ? 1 : 0,
+      isLiked: false,
+      isHugged: true,
+      status: 'approved',
+      isPublic: postData.isPublic ?? false,
+      isCounselingMailbox: postData.isCounselingMailbox ?? false,
+      counselorReplyOnly: postData.counselorReplyOnly ?? false,
+      imageUrl: postData.imageUrl,
+      imageAnalysis: postData.imageAnalysis,
+      isIdentityPublic: postData.isIdentityPublic,
+      authorDisplayName: postData.authorDisplayName,
+      authorAvatarUrl: postData.authorAvatarUrl,
+      authorCohort: postData.authorCohort,
+      authorMajor: postData.authorMajor,
+      replies: moderationResult?.comfortMessage ? [
+        {
+          id: `reply-ai-${Date.now()}`,
+          postId: generatedPostId,
+          authorName: 'Ngọn Đèn Thấu Hiểu (AI Companion)',
+          authorRole: 'ai_lantern',
+          isVerifiedBadge: true,
+          authorReputationScore: 99,
+          timestamp: 'Vừa xong',
+          createdAt: Date.now(),
+          content: moderationResult.comfortMessage,
+          hugsCount: 1,
+          isHugged: true
+        }
+      ] : []
+    };
+
+    setPosts(prev => [newPost, ...prev.filter(p => p.id !== newPost.id)]);
+    setMyPostIds(prev => [...new Set([...prev, generatedPostId])]);
+
+    // Async write to Firestore
+    createPostInFirestore(newPost).catch(err => {
+      console.warn('Firestore write warning:', err);
+    });
+    
+    // Update school counts in schools list
+    setSchools(prev => prev.map(s => {
+      if (s.id === postData.schoolId || s.name === postData.schoolName) {
+        const updatedLetterCount = (s.letterCount || 0) + 1;
+        const updatedNewCount = (s.newCount || 0) + 1;
+        return { ...s, letterCount: updatedLetterCount, newCount: updatedNewCount };
+      }
+      return s;
+    }));
+
+    // Switch to feed for that school or global
+    if (postData.isPublic) {
+      setSelectedSchool(prev => ({
+        ...prev,
+        id: prev.id || 'all-schools',
+        letterCount: posts.length + 1,
+        newCount: (prev.newCount || 0) + 1
+      }));
+    } else {
+      const targetSchool = schools.find(s => s.id === postData.schoolId || s.name === postData.schoolName) || selectedSchool;
+      setSelectedSchool({
+        ...targetSchool,
+        letterCount: (targetSchool.letterCount || 0) + 1,
+        newCount: (targetSchool.newCount || 0) + 1
+      });
+    }
+    setActiveTab('feed');
+
+    return { isSafe: true };
   };
 
   // Handle requesting Gemini AI Mentor reply for a post
@@ -1766,7 +1855,7 @@ export default function App() {
             }
           ]
         };
-        setThreads(prev => [newThread, ...prev]);
+        setThreads(prev => [newThread, ...prev.filter(t => t.id !== newThread.id)]);
         setActiveThreadId(newThread.id);
       }
     } else if (peerType === 'expert') {
@@ -1838,7 +1927,7 @@ export default function App() {
           isMe: true
         }]
       } as DirectThread,
-      ...prev
+      ...prev.filter(t => t.id !== newThreadId && t.relatedPostId !== post.id)
     ]);
     setActiveThreadId(newThreadId);
     setActiveTab('messages');
@@ -1846,19 +1935,27 @@ export default function App() {
 
   // Open Direct Chat with Peer Listener or Mentor
   const handleOpenDirectChatWithPeer = async (peerName: string, roleTitle: string) => {
-    const existing = threads.find(t => t.peerName === peerName);
+    const cleanPeerId = peerName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const cleanCurrentId = currentUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const newThreadId = `thread-peer-${cleanPeerId}-${cleanCurrentId}`;
+
+    const existing = threads.find(t => t.id === newThreadId || t.peerName === peerName);
     if (existing) {
       setActiveThreadId(existing.id);
     } else {
-      const newThreadId = `thread-peer-${Date.now()}`;
-      const isExpert = peerName.includes('Cô') || peerName.includes('Dr.') || peerName.includes('ThS.') || peerName.includes('Chuyên gia');
+      const isAdmin = peerName.includes('Admin') || peerName.includes('Quản Trị');
+      const isExpert = isAdmin || peerName.includes('Cô') || peerName.includes('Dr.') || peerName.includes('ThS.') || peerName.includes('Chuyên gia');
       
+      const welcomeText = isAdmin
+        ? `Chào bạn! Mình là Ban Quản Trị & Cố Vấn Lantern 🛡️✨. Chúng mình luôn ở đây 24/7 để lắng nghe mọi khó khăn, bảo vệ quyền riêng tư và hỗ trợ đồng hành cùng bạn. Hãy chia sẻ bất cứ điều gì bạn đang gặp phải nhé!`
+        : `Chào bạn! Mình là ${peerName}. Mình rất vui được ngồi đây lắng nghe những tâm sự của bạn 🌿`;
+
       const initMsg: FirestoreMessageItem = {
         id: `m-peer-init-${Date.now()}`,
         senderId: 'peer-listener',
         senderName: peerName,
         senderRole: isExpert ? 'expert' : 'peer_listener',
-        text: `Chào bạn! Mình là ${peerName}. Mình rất vui được ngồi đây lắng nghe những tâm sự của bạn 🌿`,
+        text: welcomeText,
         timestamp: 'Vừa xong',
         createdAt: Date.now()
       };
@@ -1880,16 +1977,22 @@ export default function App() {
 
       await sendDirectMessageToFirestore(newThreadId, newThreadMeta, initMsg);
 
-      setThreads(prev => [
-        {
-          ...newThreadMeta,
-          messages: [{
-            ...initMsg,
-            isMe: false
-          }]
-        } as DirectThread,
-        ...prev
-      ]);
+      setThreads(prev => {
+        const hasExisting = prev.some(t => t.id === newThreadId || t.peerName === peerName);
+        if (hasExisting) {
+          return prev;
+        }
+        return [
+          {
+            ...newThreadMeta,
+            messages: [{
+              ...initMsg,
+              isMe: false
+            }]
+          } as DirectThread,
+          ...prev.filter(t => t.id !== newThreadId && t.peerName !== peerName)
+        ];
+      });
       setActiveThreadId(newThreadId);
     }
     setActiveTab('messages');
@@ -2025,6 +2128,7 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage
             schools={schools}
+            posts={posts}
             onSelectSchool={(school) => {
               setSelectedSchool(school);
               setActiveTab('feed');
@@ -2039,6 +2143,7 @@ export default function App() {
         {activeTab === 'explore' && (
           <ExploreView
             schools={schools}
+            posts={posts}
             isAdmin={isAdmin}
             onEditSchool={(school) => setEditingSchool(school)}
             onDeleteSchool={handleDeleteSchool}
@@ -2138,6 +2243,7 @@ export default function App() {
               setReportTarget({ listenerName, postId });
             }}
             onViewPublicProfile={(target) => setPublicProfileTarget(target)}
+            onScheduleAppointment={handleScheduleAppointment}
             isAuthor={isUserAuthor(selectedPost)}
           />
         )}
@@ -2162,6 +2268,7 @@ export default function App() {
             onOpenReportModal={(listenerName, threadId) => {
               setReportTarget({ listenerName, threadId });
             }}
+            onScheduleAppointment={handleScheduleAppointment}
           />
         )}
 
@@ -2229,6 +2336,10 @@ export default function App() {
             onRejectApplication={handleRejectMentorApplication}
             reports={listenerReports}
             onResolveReport={handleResolveReport}
+            appointments={appointments}
+            onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+            onDeleteAppointment={handleDeleteAppointment}
+            onCreateAppointment={handleScheduleAppointment}
           />
         )}
       </main>
@@ -2266,21 +2377,25 @@ export default function App() {
         schools={schools}
         userState={userState}
         onCompleteVerification={(school, verificationData) => {
-          setSelectedSchool(school);
+          const updatedSchool = {
+            ...school,
+            verifiedCount: Math.max((school.verifiedCount || 0) + 1, 1)
+          };
+          setSelectedSchool(updatedSchool);
           setActiveTab('feed');
           setSchools(prev => {
             if (!prev.some(s => s.id === school.id)) {
-              return [...prev, school];
+              return [...prev, updatedSchool];
             }
-            return prev;
+            return prev.map(s => s.id === school.id ? updatedSchool : s);
           });
-          updateSchoolInFirestore(school.id, school).catch(err => {
+          updateSchoolInFirestore(updatedSchool.id, updatedSchool).catch(err => {
             console.warn('Persist verified school error:', err);
           });
           setUserState(prev => {
             const currentList = prev.verifiedSchools || (prev.selectedSchool ? [prev.selectedSchool] : []);
             const alreadyVerified = currentList.some(s => s.id === school.id);
-            const newList = alreadyVerified ? currentList : [...currentList, school];
+            const newList = alreadyVerified ? currentList : [...currentList, updatedSchool];
             
             const aiData = verificationData?.aiResult || {};
             const extractedName = aiData.extractedStudentName || prev.verifiedFullName || prev.displayName;

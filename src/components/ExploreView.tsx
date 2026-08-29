@@ -12,10 +12,11 @@ import {
   Trash2, 
   MapPin 
 } from 'lucide-react';
-import { School, SchoolType } from '../types';
+import { School, SchoolType, Post } from '../types';
 
 interface ExploreViewProps {
   schools: School[];
+  posts?: Post[];
   isAdmin?: boolean;
   onEditSchool?: (school) => void;
   onDeleteSchool?: (schoolId: string) => void;
@@ -28,6 +29,7 @@ interface ExploreViewProps {
 
 export const ExploreView: React.FC<ExploreViewProps> = ({
   schools,
+  posts = [],
   isAdmin,
   onEditSchool,
   onDeleteSchool,
@@ -412,12 +414,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-3 mt-2 border-t border-[#E5E2D9] dark:border-[#2C382A] flex items-center justify-between text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold">
-                <span>🌱 {s.letterCount.toLocaleString()} lá thư</span>
-                <span className="text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628] px-2.5 py-0.5 rounded-full">
-                  +{s.newCount || 0} mới
-                </span>
-              </div>
+              {(() => {
+                const schoolLetters = posts.filter(p => p.schoolId === s.id || p.schoolSlug === s.slug || p.schoolName === s.name);
+                const liveLetterCount = Math.max(s.letterCount || 0, schoolLetters.length);
+                const now = Date.now();
+                const oneDayMs = 24 * 60 * 60 * 1000;
+                const newToday = schoolLetters.filter(p => {
+                  if (p.createdAt) return (now - p.createdAt) < oneDayMs;
+                  if (p.timestamp) {
+                    const t = p.timestamp.toLowerCase();
+                    return t.includes('vừa') || t.includes('phút') || t.includes('giờ') || t.includes('hôm nay');
+                  }
+                  return false;
+                }).length;
+                const liveNewCount = Math.max(s.newCount || 0, newToday);
+
+                return (
+                  <div className="pt-3 mt-2 border-t border-[#E5E2D9] dark:border-[#2C382A] flex items-center justify-between text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold">
+                    <span>🌱 {liveLetterCount.toLocaleString()} lá thư</span>
+                    <span className="text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628] px-2.5 py-0.5 rounded-full">
+                      +{liveNewCount} mới
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

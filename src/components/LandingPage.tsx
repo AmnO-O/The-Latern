@@ -10,10 +10,11 @@ import {
   ShieldCheck, 
   CheckCircle2 
 } from 'lucide-react';
-import { ActiveTab, School } from '../types';
+import { ActiveTab, School, Post } from '../types';
 
 interface LandingPageProps {
   schools: School[];
+  posts?: Post[];
   onSelectSchool: (school: School) => void;
   setActiveTab: (tab: ActiveTab) => void;
   openComposer: () => void;
@@ -23,6 +24,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   schools,
+  posts = [],
   onSelectSchool,
   setActiveTab,
   openComposer,
@@ -148,12 +150,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </h3>
                 </div>
 
-                <div className="pt-3 mt-2 border-t border-[#E5E2D9] dark:border-[#2C382A] flex items-center justify-between text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold">
-                  <span>🌱 {school.letterCount.toLocaleString()} lá thư</span>
-                  <span className="text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628] px-2.5 py-0.5 rounded-full">
-                    +{school.newCount} mới
-                  </span>
-                </div>
+                {(() => {
+                  const schoolLetters = posts.filter(p => p.schoolId === school.id || p.schoolSlug === school.slug || p.schoolName === school.name);
+                  const liveLetterCount = Math.max(school.letterCount || 0, schoolLetters.length);
+                  const now = Date.now();
+                  const oneDayMs = 24 * 60 * 60 * 1000;
+                  const newToday = schoolLetters.filter(p => {
+                    if (p.createdAt) return (now - p.createdAt) < oneDayMs;
+                    if (p.timestamp) {
+                      const t = p.timestamp.toLowerCase();
+                      return t.includes('vừa') || t.includes('phút') || t.includes('giờ') || t.includes('hôm nay');
+                    }
+                    return false;
+                  }).length;
+                  const liveNewCount = Math.max(school.newCount || 0, newToday);
+
+                  return (
+                    <div className="pt-3 mt-2 border-t border-[#E5E2D9] dark:border-[#2C382A] flex items-center justify-between text-xs text-[#2C382A] dark:text-[#8E9B8A] font-semibold">
+                      <span>🌱 {liveLetterCount.toLocaleString()} lá thư</span>
+                      <span className="text-[#2A4228] dark:text-[#8BA888] font-bold bg-[#EAF0E8] dark:bg-[#2A3628] px-2.5 py-0.5 rounded-full">
+                        +{liveNewCount} mới
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

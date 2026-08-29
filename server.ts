@@ -37,6 +37,34 @@ function getResendClient(): Resend | null {
   return resendClient;
 }
 
+function formatResendFromEmail(): string {
+  const customFrom = process.env.RESEND_FROM_EMAIL?.trim();
+  if (!customFrom) {
+    return 'The Lantern <onboarding@resend.dev>';
+  }
+
+  // Strip wrapping quotes if entered by user
+  const cleaned = customFrom.replace(/^["']|["']$/g, '').trim();
+
+  // Case 1: Format "Name <email@domain.com>"
+  const withNameMatch = cleaned.match(/^([^<]+)<([^>]+)>$/);
+  if (withNameMatch) {
+    const name = withNameMatch[1].trim();
+    const email = withNameMatch[2].trim();
+    if (email.includes('@') && email.includes('.')) {
+      return `${name || 'The Lantern'} <${email}>`;
+    }
+  }
+
+  // Case 2: Just bare email "email@domain.com"
+  if (cleaned.includes('@') && !cleaned.includes('<') && !cleaned.includes('>')) {
+    return `The Lantern <${cleaned}>`;
+  }
+
+  // Case 3: If user provided just a name without an email address (e.g. "The Lantern")
+  return `${cleaned} <onboarding@resend.dev>`;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -571,15 +599,28 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
     "hcmus.edu.vn": { id: "school-hcmus", name: "ĐH Khoa học Tự nhiên - ĐHQG TP.HCM (HCMUS)", type: "university", location: "TP. Hồ Chí Minh" },
     "student.hcmus.edu.vn": { id: "school-hcmus", name: "ĐH Khoa học Tự nhiên - ĐHQG TP.HCM (HCMUS)", type: "university", location: "TP. Hồ Chí Minh" },
     "hcmut.edu.vn": { id: "school-hcmut", name: "ĐH Bách Khoa - ĐHQG TP.HCM (HCMUT)", type: "university", location: "TP. Hồ Chí Minh" },
+    "uit.edu.vn": { id: "school-uit", name: "ĐH Công nghệ Thông tin - ĐHQG TP.HCM (UIT)", type: "university", location: "TP. Hồ Chí Minh" },
+    "uel.edu.vn": { id: "school-uel", name: "ĐH Kinh tế - Luật - ĐHQG TP.HCM (UEL)", type: "university", location: "TP. Hồ Chí Minh" },
+    "ueh.edu.vn": { id: "school-ueh", name: "Đại học Kinh tế TP.HCM (UEH)", type: "university", location: "TP. Hồ Chí Minh" },
     "hust.edu.vn": { id: "school-hust", name: "ĐH Bách Khoa Hà Nội (HUST)", type: "university", location: "Hà Nội" },
     "sis.hust.edu.vn": { id: "school-hust", name: "ĐH Bách Khoa Hà Nội (HUST)", type: "university", location: "Hà Nội" },
     "vnu.edu.vn": { id: "school-vnuhanoi", name: "ĐH Quốc Gia Hà Nội (VNU-HN)", type: "university", location: "Hà Nội" },
+    "uet.vnu.edu.vn": { id: "school-uet", name: "ĐH Công nghệ - ĐHQG Hà Nội (UET)", type: "university", location: "Hà Nội" },
     "hus.vnu.edu.vn": { id: "school-hus-hn", name: "ĐH Khoa học Tự nhiên - ĐHQG Hà Nội (HUS)", type: "university", location: "Hà Nội" },
     "hus.edu.vn": { id: "school-hus-hn", name: "ĐH Khoa học Tự nhiên - ĐHQG Hà Nội (HUS)", type: "university", location: "Hà Nội" },
     "neu.edu.vn": { id: "school-neu", name: "ĐH Kinh tế Quốc dân (NEU)", type: "university", location: "Hà Nội" },
-    "ump.edu.vn": { id: "school-ump", name: "ĐH Y Dược TP.HCM (UMP)", type: "university", location: "TP. Hồ Chí Minh" },
-    "ctu.edu.vn": { id: "school-ctu", name: "ĐH Cần Thơ (CTU)", type: "university", location: "Cần Thơ" },
     "ftu.edu.vn": { id: "school-ftu", name: "ĐH Ngoại Thương (FTU)", type: "university", location: "Hà Nội & TP.HCM" },
+    "ump.edu.vn": { id: "school-ump", name: "ĐH Y Dược TP.HCM (UMP)", type: "university", location: "TP. Hồ Chí Minh" },
+    "hmu.edu.vn": { id: "school-hmu", name: "ĐH Y Hà Nội (HMU)", type: "university", location: "Hà Nội" },
+    "ctu.edu.vn": { id: "school-ctu", name: "ĐH Cần Thơ (CTU)", type: "university", location: "Cần Thơ" },
+    "ptit.edu.vn": { id: "school-ptit", name: "Học viện Công nghệ Bưu chính Viễn thông (PTIT)", type: "university", location: "Hà Nội & TP.HCM" },
+    "fpt.edu.vn": { id: "school-fpt", name: "Đại học FPT (FPT University)", type: "university", location: "Toàn quốc" },
+    "tdtu.edu.vn": { id: "school-tdtu", name: "ĐH Tôn Đức Thắng (TDTU)", type: "university", location: "TP. Hồ Chí Minh" },
+    "rmit.edu.vn": { id: "school-rmit", name: "ĐH RMIT Việt Nam", type: "university", location: "Hà Nội & TP.HCM" },
+    "dav.edu.vn": { id: "school-dav", name: "Học viện Ngoại Giao (DAV)", type: "university", location: "Hà Nội" },
+    "ajc.edu.vn": { id: "school-ajc", name: "Học viện Báo chí & Tuyên truyền (AJC)", type: "university", location: "Hà Nội" },
+    "hub.edu.vn": { id: "school-hub", name: "ĐH Ngân Hàng TP.HCM (HUB)", type: "university", location: "TP. Hồ Chí Minh" },
+    "ba.edu.vn": { id: "school-ba", name: "Học viện Ngân Hàng (BA)", type: "university", location: "Hà Nội" },
   };
 
   const resolveSchoolFromEmail = (cleanEmail: string, schoolId?: string, schoolName?: string) => {
@@ -598,10 +639,11 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
     if (matchedSchool) {
       return { matchedSchool, domain, isValidEdu: true };
     } else if (isEduVn) {
+      const rawDomainName = domain.replace('.edu.vn', '').replace('.edu', '').toUpperCase();
       return {
         matchedSchool: {
-          id: schoolId || `school-edu-${domain.replace(/[^a-z0-9]+/g, '-')}`,
-          name: schoolName || `Trường học (@${domain})`,
+          id: `school-edu-${domain.replace(/[^a-z0-9]+/g, '-')}`,
+          name: `Trường Đại Học / Cao Đẳng (${rawDomainName})`,
           type: "university" as const,
           location: "Việt Nam"
         },
@@ -610,14 +652,9 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
       };
     } else {
       return {
-        matchedSchool: {
-          id: schoolId || 'school-custom',
-          name: schoolName || 'Trường học của bạn',
-          type: 'highschool' as const,
-          location: 'Việt Nam'
-        },
+        matchedSchool: null,
         domain,
-        isValidEdu: true
+        isValidEdu: false
       };
     }
   };
@@ -645,7 +682,14 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
         });
       }
 
-      const { matchedSchool, domain } = resolveSchoolFromEmail(cleanEmail, schoolId, schoolName);
+      const { matchedSchool, domain, isValidEdu } = resolveSchoolFromEmail(cleanEmail, schoolId, schoolName);
+
+      if (!isValidEdu || !matchedSchool) {
+        return res.status(400).json({
+          success: false,
+          error: "Email không thuộc trường được hỗ trợ hoặc không phải email giáo dục (.edu.vn / .edu). Vui lòng sử dụng email chính thức do trường cấp."
+        });
+      }
 
       // Generate secure 6-digit OTP
       const otp = crypto.randomInt(100000, 1000000).toString();
@@ -668,7 +712,7 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
       const resend = getResendClient();
       if (resend) {
         try {
-          const fromEmail = process.env.RESEND_FROM_EMAIL || 'The Lantern <onboarding@resend.dev>';
+          const fromEmail = formatResendFromEmail();
           const resendResult = await resend.emails.send({
             from: fromEmail,
             to: cleanEmail,

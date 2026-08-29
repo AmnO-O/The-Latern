@@ -249,6 +249,38 @@ export interface LanternNotification {
   schoolName?: string;
 }
 
+export type AppointmentMeetingType = 'google_meet' | 'in_person' | 'voice_call';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+export interface CounselingAppointment {
+  id: string;
+  postId?: string;
+  relatedPostId?: string;
+  relatedPostTitle?: string;
+  threadId?: string;
+  requesterAnonId?: string;
+  requesterDisplayName?: string;
+  requesterRole?: AuthorRole | string;
+  participantDisplayName?: string;
+  counselorName: string;
+  counselorRole: AuthorRole | string;
+  schoolId?: string;
+  schoolName?: string;
+  date: string; // e.g. "2026-08-29"
+  timeSlot: string; // e.g. "14:00 - 15:00"
+  meetingType: AppointmentMeetingType;
+  meetUrl?: string; // Google Meet link
+  locationName?: string; // Campus Room name
+  topic: string; // Chủ đề cần tham vấn
+  note?: string; // Ghi chú bảo mật
+  notes?: string; // Ghi chú thêm
+  status: AppointmentStatus;
+  createdAt: number;
+  confirmedAt?: number;
+  meetingCode?: string; // e.g. "lan-counsel-meet"
+}
+
+
 export type HealingCategory = 'community_kindness' | 'dev_thanks' | 'idea_feedback';
 
 export interface HealingNote {

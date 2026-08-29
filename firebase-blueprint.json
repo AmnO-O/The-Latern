@@ -70,6 +70,21 @@
         "createdAt": { "type": "number" }
       },
       "required": ["id", "participants"]
+    },
+    "healing_notes": {
+      "title": "Healing Notes & Feedback Wall",
+      "description": "Public words of kindness, appreciation, and feedback shared by community members",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "senderName": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "tagColor": { "type": "string" }
+      },
+      "required": ["id", "category", "message"]
     }
   }
 }

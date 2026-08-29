@@ -57,6 +57,80 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
   const [customSchoolName, setCustomSchoolName] = useState<string>('');
   const [studentRole, setStudentRole] = useState<'student' | 'alumni'>('student');
 
+  // OCR State
+  const [fileUploaded, setFileUploaded] = useState<boolean>(false);
+  const [fileBase64, setFileBase64] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+  const [ocrError, setOcrError] = useState<{
+    title: string;
+    message: string;
+    extractedSchool?: string;
+    selectedSchoolName?: string;
+    verificationStatus?: string;
+  } | null>(null);
+
+  // Email OTP State
+  const [emailStep, setEmailStep] = useState<'input' | 'otp_sent'>('input');
+  const [emailInput, setEmailInput] = useState<string>(userState?.googleUser?.email || '');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [otpInput, setOtpInput] = useState<string>('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+  const [resendCountdown, setResendCountdown] = useState<number>(0);
+  const [devOtpPreview, setDevOtpPreview] = useState<string | null>(null);
+  const [matchedSchoolInfo, setMatchedSchoolInfo] = useState<School | null>(null);
+  const [emailSentViaResend, setEmailSentViaResend] = useState<boolean>(false);
+  const [serverDeliveryMessage, setServerDeliveryMessage] = useState<string | null>(null);
+
+  // Auto-detect school from email domain
+  const detectSchoolFromEmail = (email: string): School | null => {
+    if (!email || !email.includes('@')) return null;
+    const domain = email.split('@')[1]?.toLowerCase().trim() || '';
+    if (!domain) return null;
+
+    for (const s of actualSchools) {
+      const sNorm = s.name.toLowerCase();
+      if (domain.includes('hust') && (sNorm.includes('hust') || sNorm.includes('bách khoa hà nội') || sNorm.includes('bach khoa ha noi'))) return s;
+      if (domain.includes('hcmut') && (sNorm.includes('hcmut') || sNorm.includes('bách khoa - đhqg tp.hcm') || sNorm.includes('bach khoa tp'))) return s;
+      if (domain.includes('uit') && (sNorm.includes('uit') || sNorm.includes('công nghệ thông tin') || sNorm.includes('cntt'))) return s;
+      if (domain.includes('ueh') && (sNorm.includes('ueh') || sNorm.includes('kinh tế tp.hcm') || sNorm.includes('kinh te tp'))) return s;
+      if (domain.includes('hcmus') && (sNorm.includes('hcmus') || sNorm.includes('khoa học tự nhiên') || sNorm.includes('khtn'))) return s;
+      if (domain.includes('fitus') && (sNorm.includes('hcmus') || sNorm.includes('khoa học tự nhiên'))) return s;
+      if (domain.includes('vnu') && (sNorm.includes('vnu') || sNorm.includes('quốc gia hà nội') || sNorm.includes('quoc gia ha noi'))) return s;
+      if (domain.includes('neu') && (sNorm.includes('neu') || sNorm.includes('kinh tế quốc dân') || sNorm.includes('kinh te quoc dan'))) return s;
+      if (domain.includes('ftu') && (sNorm.includes('ftu') || sNorm.includes('ngoại thương') || sNorm.includes('ngoai thuong'))) return s;
+      if (domain.includes('ump') && (sNorm.includes('ump') || sNorm.includes('y dược') || sNorm.includes('y duoc'))) return s;
+      if (domain.includes('ctu') && (sNorm.includes('ctu') || sNorm.includes('cần thơ') || sNorm.includes('can tho'))) return s;
+      if (domain.includes('fpt') && (sNorm.includes('fpt') || sNorm.includes('đại học fpt'))) return s;
+      if (domain.includes('rmit') && (sNorm.includes('rmit'))) return s;
+      if (domain.includes('tdtu') && (sNorm.includes('tôn đức thắng') || sNorm.includes('tdtu'))) return s;
+    }
+
+    if (domain.endsWith('.edu.vn') || domain.endsWith('.edu')) {
+      const rawDomainName = domain.replace('.edu.vn', '').replace('.edu', '').toUpperCase();
+      return {
+        id: `school-edu-${domain.replace(/[^a-z0-9]+/g, '-')}`,
+        name: `Trường Đại Học / THPT (${rawDomainName})`,
+        slug: domain.replace(/[^a-z0-9]+/g, '-'),
+        type: 'university' as const,
+        letterCount: 0,
+        newCount: 0,
+        verifiedCount: 1,
+        location: 'Việt Nam'
+      };
+    }
+    return null;
+  };
+
+  const detectedEmailSchool = detectSchoolFromEmail(emailInput);
+  const isEmailDomainValidEdu = Boolean(
+    emailInput.includes('@') && 
+    (emailInput.trim().toLowerCase().endsWith('.edu.vn') || 
+     emailInput.trim().toLowerCase().endsWith('.edu') || 
+     detectedEmailSchool)
+  );
+
   const getEffectiveSchool = (): School => {
     if (selectedSchoolId === 'new_custom' || !selectedSchoolId || actualSchools.length === 0) {
       const name = customSchoolName.trim() || 'Trường học của tôi';
@@ -85,32 +159,6 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
       location: 'Việt Nam'
     };
   };
-  
-  // OCR State
-  const [fileUploaded, setFileUploaded] = useState<boolean>(false);
-  const [fileBase64, setFileBase64] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
-  const [ocrError, setOcrError] = useState<{
-    title: string;
-    message: string;
-    extractedSchool?: string;
-    selectedSchoolName?: string;
-    verificationStatus?: string;
-  } | null>(null);
-
-  // Email OTP State
-  const [emailStep, setEmailStep] = useState<'input' | 'otp_sent'>('input');
-  const [emailInput, setEmailInput] = useState<string>(userState?.googleUser?.email || '');
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [otpInput, setOtpInput] = useState<string>('');
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
-  const [resendCountdown, setResendCountdown] = useState<number>(0);
-  const [devOtpPreview, setDevOtpPreview] = useState<string | null>(null);
-  const [matchedSchoolInfo, setMatchedSchoolInfo] = useState<School | null>(null);
-  const [emailSentViaResend, setEmailSentViaResend] = useState<boolean>(false);
-  const [serverDeliveryMessage, setServerDeliveryMessage] = useState<string | null>(null);
 
   // Token State
   const [tokenInput, setTokenInput] = useState<string>('');
@@ -306,13 +354,29 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
     setEmailError(null);
     setOtpError(null);
 
-    if (!emailInput || !emailInput.includes('@')) {
+    const clean = emailInput.trim().toLowerCase();
+    if (!clean || !clean.includes('@')) {
       setEmailError('Vui lòng nhập địa chỉ email trường hợp lệ (ví dụ: student@hcmus.edu.vn hoặc @*.edu.vn)');
       return;
     }
 
+    if (!isEmailDomainValidEdu && !detectedEmailSchool) {
+      setEmailError('Email này không thuộc đuôi giáo dục (@*.edu.vn / @*.edu) hoặc trường học được hỗ trợ. Vui lòng nhập đúng email sinh viên của bạn.');
+      return;
+    }
+
+    const currentSchool = detectedEmailSchool || {
+      id: `school-edu-${clean.split('@')[1]?.replace(/[^a-z0-9]+/g, '-')}`,
+      name: `Trường Đại Học / THPT (${clean.split('@')[1]?.toUpperCase()})`,
+      slug: clean.split('@')[1]?.replace(/[^a-z0-9]+/g, '-'),
+      type: 'university' as const,
+      letterCount: 0,
+      newCount: 0,
+      verifiedCount: 1,
+      location: 'Việt Nam'
+    };
+
     setIsSendingOtp(true);
-    const currentSchool = getEffectiveSchool();
 
     try {
       const res = await fetch('/api/send-student-email-otp', {
@@ -364,7 +428,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
     }
 
     setIsVerifyingOtp(true);
-    const currentSchool = getEffectiveSchool();
+    const currentSchool = matchedSchoolInfo || detectedEmailSchool || getEffectiveSchool();
 
     try {
       const res = await fetch('/api/verify-student-email-otp', {
@@ -629,62 +693,6 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
               </button>
             </div>
 
-            {/* School Selector & Role (Only needed for Email & Token methods) */}
-            {activeMethod !== 'ocr' && (
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A] mb-1">
-                      Trường học cần xác thực
-                    </label>
-                    <select
-                      value={selectedSchoolId}
-                      onChange={(e) => setSelectedSchoolId(e.target.value)}
-                      className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none focus:border-[#2A4228]"
-                    >
-                      {actualSchools.length > 0 && actualSchools.map(s => (
-                        <option key={s.id} value={s.id} className="bg-white dark:bg-[#1C231B]">
-                          {s.name} ({s.location})
-                        </option>
-                      ))}
-                      <option value="new_custom" className="bg-white dark:bg-[#1C231B] text-[#2A4228] font-bold">
-                        ➕ Thêm trường mới / Trường khác...
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A] mb-1">
-                      Tư cách
-                    </label>
-                    <select
-                      value={studentRole}
-                      onChange={(e) => setStudentRole(e.target.value as any)}
-                      className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none focus:border-[#2A4228]"
-                    >
-                      <option value="student">Đang theo học</option>
-                      <option value="alumni">Cựu HS / SV</option>
-                    </select>
-                  </div>
-                </div>
-
-                {(selectedSchoolId === 'new_custom' || schools.length === 0) && (
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#2A4228] dark:text-[#8BA888] mb-1">
-                      Nhập tên trường học của bạn (THPT hoặc Đại học)
-                    </label>
-                    <input
-                      type="text"
-                      value={customSchoolName}
-                      onChange={(e) => setCustomSchoolName(e.target.value)}
-                      placeholder="Ví dụ: THPT Chuyên Lê Hồng Phong, ĐH Bách Khoa..."
-                      className="w-full bg-white dark:bg-[#20281F] border border-[#2A4228] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none placeholder:font-normal placeholder:text-[var(--text-muted)]"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Method 1: AI Vision OCR */}
             {activeMethod === 'ocr' && (
               <form onSubmit={handleOcrSubmit} className="space-y-4">
@@ -694,7 +702,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     <span>Tự động phát hiện & chuyển đúng trường</span>
                   </div>
                   <p className="text-[11px] leading-relaxed opacity-90">
-                    Bạn chỉ cần tải/chụp ảnh thẻ của mình lên. Gemini Vision AI sẽ tự động nhận diện tên trường, xác thực và đưa bạn vào đúng Campus Hub tương ứng!
+                    Bạn chỉ cần tải/chụp ảnh thẻ của mình lên. Gemini Vision AI sẽ tự động nhận diện tên trường, xác thực và đưa bạn vào đúng Campus Hub tương ứng mà không cần chọn trường thủ công!
                   </p>
                 </div>
 
@@ -725,7 +733,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                           Chạm để tải ảnh thẻ hoặc chụp trực tiếp
                         </p>
                         <p className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A] mt-0.5 font-medium">
-                          Hỗ trợ JPG, PNG. Gemini Vision AI tự động nhận diện tên trường.
+                          Hỗ trợ JPG, PNG. Gemini Vision AI tự động đọc tên trường & khóa danh tính.
                         </p>
                       </>
                     )}
@@ -746,10 +754,6 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
 
                     {ocrError.extractedSchool && (
                       <div className="bg-white/80 dark:bg-[#1A2219] p-3 rounded-xl border border-rose-500/20 space-y-1.5 text-[11px]">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#5A6D58] dark:text-[#8E9B8A]">Trường bạn đang chọn:</span>
-                          <span className="font-bold text-[#0F180E] dark:text-[#E8ECE6]">{ocrError.selectedSchoolName || getEffectiveSchool().name}</span>
-                        </div>
                         <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 font-bold">
                           <span>Trường phát hiện trên thẻ:</span>
                           <span>{ocrError.extractedSchool}</span>
@@ -771,30 +775,6 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Chọn/Chụp lại thẻ khác</span>
                       </button>
-
-                      {ocrError.extractedSchool && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const matched = schools.find(s => 
-                              s.name.toLowerCase().includes(ocrError.extractedSchool!.toLowerCase()) ||
-                              ocrError.extractedSchool!.toLowerCase().includes(s.name.toLowerCase())
-                            );
-                            if (matched) {
-                              setSelectedSchoolId(matched.id);
-                              setCustomSchoolName('');
-                            } else {
-                              setSelectedSchoolId('new_custom');
-                              setCustomSchoolName(ocrError.extractedSchool!);
-                            }
-                            setOcrError(null);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-[11px] font-bold transition-all shadow-xs flex items-center gap-1"
-                        >
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                          <span>Đổi sang "{ocrError.extractedSchool}"</span>
-                        </button>
-                      )}
                     </div>
                   </div>
                 )}
@@ -830,14 +810,47 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
             {activeMethod === 'email' && (
               <div className="space-y-4">
                 {emailStep === 'input' ? (
-                  <form onSubmit={handleSendOtp} className="space-y-4">
+                  <form onSubmit={handleSendOtp} className="space-y-3.5">
+                    {/* Role selector */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A]">
+                        Tư cách của bạn
+                      </label>
+                      <div className="flex rounded-xl bg-[#EAF0E8] dark:bg-[#20281F] p-0.5 border border-[#C8D2C4] dark:border-[#3A4738]">
+                        <button
+                          type="button"
+                          onClick={() => setStudentRole('student')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                            studentRole === 'student'
+                              ? 'bg-white dark:bg-[#2A3628] text-[#2A4228] dark:text-[#8BA888] shadow-2xs'
+                              : 'text-[#5A6D58] dark:text-[#8E9B8A]'
+                          }`}
+                        >
+                          Đang theo học
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStudentRole('alumni')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                            studentRole === 'alumni'
+                              ? 'bg-white dark:bg-[#2A3628] text-[#2A4228] dark:text-[#8BA888] shadow-2xs'
+                              : 'text-[#5A6D58] dark:text-[#8E9B8A]'
+                          }`}
+                        >
+                          Cựu HS/SV
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Email Input */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A]">
-                          Bước 1: Nhập Email Trường (@*.edu.vn)
+                          Nhập Email Trường (@*.edu.vn)
                         </label>
-                        <span className="text-[10px] text-[#2A4228] dark:text-[#8BA888] font-bold">
-                          Gửi mã OTP 6 số
+                        <span className="text-[10px] text-[#2A4228] dark:text-[#8BA888] font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Tự nhận diện trường</span>
                         </span>
                       </div>
                       <div className="relative">
@@ -845,11 +858,29 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                           type="email"
                           value={emailInput}
                           onChange={(e) => setEmailInput(e.target.value)}
-                          placeholder="ví dụ: student@hcmus.edu.vn hoặc @apcs.fitus.edu.vn"
+                          placeholder="ví dụ: student@hcmus.edu.vn, sv@hust.edu.vn..."
                           className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2.5 pl-9 pr-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-medium focus:outline-none focus:border-[#2A4228]"
                         />
                         <AtSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A6D58] dark:text-[#8E9B8A] w-4 h-4" />
                       </div>
+
+                      {/* Smart Auto-Detected School Badge */}
+                      {detectedEmailSchool && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
+                          <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <SchoolIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-400 block">
+                              Đã nhận diện trường học:
+                            </span>
+                            <span className="font-bold text-xs truncate block text-[#182217] dark:text-[#E8ECE6]">
+                              {detectedEmailSchool.name}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       {emailError && (
                         <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5 font-semibold flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />
@@ -858,9 +889,9 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                       )}
 
                       {/* Quick Domain Suggestion Chips */}
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                         <span className="text-[10px] text-[#5A6D58] dark:text-[#8E9B8A]">Gợi ý nhanh:</span>
-                        {['@fitus.edu.vn', '@hcmus.edu.vn', '@hust.edu.vn', '@ftu.edu.vn'].map((domain) => (
+                        {['@hust.edu.vn', '@fitus.edu.vn', '@hcmus.edu.vn', '@ftu.edu.vn', '@neu.edu.vn'].map((domain) => (
                           <button
                             key={domain}
                             type="button"
@@ -879,7 +910,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
                     <div className="p-3 rounded-xl bg-[#EAF0E8]/60 dark:bg-[#20281F] border border-[#C8D2C4]/70 dark:border-[#3A4738] text-[11px] text-[#4A5C48] dark:text-[#8E9B8A] flex items-start gap-2">
                       <MailCheck className="w-4 h-4 text-[#2A4228] dark:text-[#8BA888] shrink-0 mt-0.5" />
                       <p className="leading-relaxed">
-                        Hệ thống sẽ gửi một <strong>mã xác thực OTP gồm 6 chữ số</strong> về email trường của bạn. Mã có hiệu lực trong 10 phút.
+                        Hệ thống sẽ gửi một <strong>mã xác thực OTP gồm 6 chữ số</strong> về email trường của bạn để xác nhận tư cách học đường.
                       </p>
                     </div>
 
@@ -1032,6 +1063,60 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
             {/* Method 3: Campus Token */}
             {activeMethod === 'token' && (
               <form onSubmit={handleTokenSubmit} className="space-y-4">
+                {/* School Selector & Role specifically for Token method */}
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A] mb-1">
+                        Trường học áp dụng token
+                      </label>
+                      <select
+                        value={selectedSchoolId}
+                        onChange={(e) => setSelectedSchoolId(e.target.value)}
+                        className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none focus:border-[#2A4228]"
+                      >
+                        {actualSchools.length > 0 && actualSchools.map(s => (
+                          <option key={s.id} value={s.id} className="bg-white dark:bg-[#1C231B]">
+                            {s.name} ({s.location})
+                          </option>
+                        ))}
+                        <option value="new_custom" className="bg-white dark:bg-[#1C231B] text-[#2A4228] font-bold">
+                          ➕ Thêm trường mới / Trường khác...
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A] mb-1">
+                        Tư cách
+                      </label>
+                      <select
+                        value={studentRole}
+                        onChange={(e) => setStudentRole(e.target.value as any)}
+                        className="w-full bg-white dark:bg-[#20281F] border border-[#C8D2C4] dark:border-[#3A4738] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none focus:border-[#2A4228]"
+                      >
+                        <option value="student">Đang theo học</option>
+                        <option value="alumni">Cựu HS / SV</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {(selectedSchoolId === 'new_custom' || schools.length === 0) && (
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#2A4228] dark:text-[#8BA888] mb-1">
+                        Nhập tên trường học của bạn (THPT hoặc Đại học)
+                      </label>
+                      <input
+                        type="text"
+                        value={customSchoolName}
+                        onChange={(e) => setCustomSchoolName(e.target.value)}
+                        placeholder="Ví dụ: THPT Chuyên Lê Hồng Phong, ĐH Bách Khoa..."
+                        className="w-full bg-white dark:bg-[#20281F] border border-[#2A4228] rounded-xl py-2 px-3 text-xs sm:text-sm text-[#0F180E] dark:text-[#E8ECE6] font-bold focus:outline-none placeholder:font-normal placeholder:text-[var(--text-muted)]"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider font-bold text-[#4A5C48] dark:text-[#8E9B8A] mb-1">
                     Nhập Mã Sinh Viên / Token Kích Hoạt Hội Sinh Viên

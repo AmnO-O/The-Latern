@@ -270,13 +270,48 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
               : `Hộp thư Campus Hub chính thức • ${school.location}`}
           </p>
 
-          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 text-xs text-[#42493F] dark:text-[#8E9B8A] font-medium pt-3 border-t border-[#E5E2D9] dark:border-[#3A4738]">
-            <span>🌱 <strong>{school.letterCount.toLocaleString()}</strong> lá thư</span>
-            <span className="text-[#E5E2D9] dark:text-[#3A4738]">•</span>
-            <span className="text-[#5A6E58] dark:text-[#8BA888] font-bold">+{school.newCount} mới hôm nay</span>
-            <span className="text-[#E5E2D9] dark:text-[#3A4738]">•</span>
-            <span>✅ <strong>{school.verifiedCount}</strong> thành viên đã xác thực</span>
-          </div>
+          {/* Live School & Global Stats */}
+          {(() => {
+            const isGlobal = isGlobalView || !school || school.id === 'global' || school.id === 'all-schools';
+            const matchingPosts = isGlobal
+              ? posts
+              : posts.filter(p => school && (p.schoolId === school.id || p.schoolSlug === school.slug || p.schoolName === school.name));
+            
+            const liveLetterCount = Math.max(school?.letterCount || 0, matchingPosts.length);
+
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const newTodayCount = matchingPosts.filter(p => {
+              if (p.createdAt) return (now - p.createdAt) < oneDayMs;
+              if (p.timestamp) {
+                const t = p.timestamp.toLowerCase();
+                return t.includes('vừa') || t.includes('phút') || t.includes('giờ') || t.includes('hôm nay');
+              }
+              return false;
+            }).length;
+            const liveNewCount = Math.max(school?.newCount || 0, newTodayCount);
+
+            const verifiedList = userState?.verifiedSchools || (userState?.selectedSchool ? [userState.selectedSchool] : []);
+            const isVerifiedForThis = !isGlobal && (
+              (userState?.isLoggedIn && verifiedList.some(s => s.id === school?.id || s.slug === school?.slug)) || 
+              (userState?.isLoggedIn && userState?.userRole === 'admin_moderator') ||
+              isListenerOrMentorForThisSchool
+            );
+
+            const liveVerifiedCount = isGlobal
+              ? Math.max(school?.verifiedCount || 0, (userState?.verificationStatus === 'verified' ? 1 : 0), 1200)
+              : Math.max(school?.verifiedCount || 0, isVerifiedForThis ? 1 : 0);
+
+            return (
+              <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 text-xs text-[#42493F] dark:text-[#8E9B8A] font-medium pt-3 border-t border-[#E5E2D9] dark:border-[#3A4738]">
+                <span>🌱 <strong>{liveLetterCount.toLocaleString()}</strong> lá thư</span>
+                <span className="text-[#E5E2D9] dark:text-[#3A4738]">•</span>
+                <span className="text-[#5A6E58] dark:text-[#8BA888] font-bold">+{liveNewCount} mới hôm nay</span>
+                <span className="text-[#E5E2D9] dark:text-[#3A4738]">•</span>
+                <span>✅ <strong>{liveVerifiedCount.toLocaleString()}</strong> thành viên đã xác thực</span>
+              </div>
+            );
+          })()}
 
           {/* Verified Status Verification Info Callout */}
           <div className="mt-4 pt-3 flex flex-col items-center gap-2">
@@ -486,6 +521,54 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
           </button>
         </div>
 
+        {/* Mobile/Tablet Quick Advisor & Listener Helpers Bar */}
+        <div className="xl:hidden bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-3.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-[#7E7A71] dark:text-[#8E9B8A] flex items-center gap-1.5">
+              <span>🎧</span>
+              <span>Cố vấn hỗ trợ & Người lắng nghe:</span>
+            </span>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Online 24/7
+            </span>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+            {/* Admin Option */}
+            <button
+              onClick={() => openDirectChatWithPeer(
+                userState?.userRole === 'admin_moderator' ? `${userState?.displayName || 'Admin'} (Ban Quản Trị)` : 'Ban Quản Trị & Ban Cố Vấn',
+                'Quản Trị Viên & Ban Cố Vấn'
+              )}
+              className="px-3 py-1.5 rounded-xl bg-emerald-700 text-white font-bold whitespace-nowrap flex items-center gap-1.5 shadow-2xs hover:bg-emerald-800 transition-all shrink-0"
+            >
+              <span>🛡️</span>
+              <span>{userState?.userRole === 'admin_moderator' ? 'Admin Quản Trị (Bạn)' : 'Ban Quản Trị & Cố Vấn'}</span>
+              <span className="text-[9px] bg-emerald-900/60 text-emerald-200 px-1 rounded-sm">Admin</span>
+            </button>
+
+            {/* Dr. Lan Anh */}
+            <button
+              onClick={() => openDirectChatWithPeer('Dr. Lan Anh', 'Chuyên gia Tâm lý Học đường')}
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#263124] border border-[#E5E2D9] dark:border-[#3A4738] font-bold text-[#3A4036] dark:text-[#E8ECE6] whitespace-nowrap flex items-center gap-1.5 shadow-2xs hover:border-[#8BA888] transition-all shrink-0"
+            >
+              <span>👩‍⚕️</span>
+              <span>Dr. Lan Anh</span>
+              <span className="text-[9px] bg-[#D4A373]/20 text-[#A06428] dark:text-[#D4A373] px-1 rounded-sm font-semibold">Tâm lý</span>
+            </button>
+
+            {/* Mentor Minh Đức */}
+            <button
+              onClick={() => openDirectChatWithPeer('Mentor Minh Đức', 'Đội ngũ Hỗ trợ & Đồng hành')}
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#263124] border border-[#E5E2D9] dark:border-[#3A4738] font-bold text-[#3A4036] dark:text-[#E8ECE6] whitespace-nowrap flex items-center gap-1.5 shadow-2xs hover:border-[#8BA888] transition-all shrink-0"
+            >
+              <span>🎓</span>
+              <span>Mentor Minh Đức</span>
+              <span className="text-[9px] bg-[#8BA888]/20 text-[#2A4228] dark:text-[#8BA888] px-1 rounded-sm font-semibold">Cố vấn</span>
+            </button>
+          </div>
+        </div>
+
         {/* Counseling Privacy Banner */}
         {scopeFilter === 'counseling' && !isGlobalView && (
           <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/25 flex items-start gap-3 animate-fade-in">
@@ -576,36 +659,85 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
       <aside className="hidden xl:flex flex-col w-80 p-6 gap-6 sticky top-0 h-screen overflow-y-auto border-l border-[#E5E2D9] dark:border-[#3A4738] text-xs select-none">
         {/* Active Listeners Widget */}
         <div className="bg-[var(--bg-card)] border border-[#E5E2D9] dark:border-[#3A4738] glass-panel rounded-2xl p-5 shadow-sm">
-          <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#A4A095] dark:text-[#8E9B8A] mb-3">
-            Cố vấn hỗ trợ & Người lắng nghe
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#A4A095] dark:text-[#8E9B8A]">
+              Cố vấn hỗ trợ & Người lắng nghe
+            </h3>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
+            {/* Admin / Ban Quản Trị & Cố Vấn */}
             <div 
-              onClick={() => openDirectChatWithPeer('Dr. Lan Anh', 'Chuyên gia Tâm lý')}
-              className="p-3 bg-white dark:bg-[#263124] rounded-xl border border-[#E5E2D9] dark:border-[#3A4738] flex items-center gap-3 cursor-pointer hover:border-[#8BA888] transition-colors"
+              onClick={() => openDirectChatWithPeer(
+                userState?.userRole === 'admin_moderator' ? `${userState?.displayName || 'Admin'} (Ban Quản Trị)` : 'Ban Quản Trị & Ban Cố Vấn',
+                'Quản Trị Viên & Ban Cố Vấn'
+              )}
+              className="p-3 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-950/30 dark:via-emerald-900/10 dark:to-transparent rounded-xl border border-emerald-500/30 dark:border-emerald-500/30 flex items-center gap-3 cursor-pointer hover:border-emerald-500 hover:shadow-xs transition-all group"
             >
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-[#D4A373]/20 flex items-center justify-center text-sm">👩‍⚕️</div>
+                <div className="w-10 h-10 rounded-full bg-emerald-700/20 dark:bg-emerald-600/30 flex items-center justify-center text-base border border-emerald-500/40">
+                  🛡️
+                </div>
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#263124] rounded-full"></div>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-[#3A4036] dark:text-[#E8ECE6]">Dr. Lan Anh</h4>
-                <p className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]">Chuyên gia Tâm lý</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-[#182217] dark:text-[#E8ECE6] truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                    {userState?.userRole === 'admin_moderator'
+                      ? `${userState?.displayName || userState?.verifiedFullName || 'Admin Quản Trị'} (Bạn)`
+                      : 'Ban Quản Trị & Ban Cố Vấn'}
+                  </h4>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-700 text-white shrink-0">
+                    Admin
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#5A6E58] dark:text-[#8BA888] truncate font-medium">
+                  {userState?.userRole === 'admin_moderator' ? 'Tài khoản Quản trị & Điều phối' : 'Hỗ trợ bảo mật & Lắng nghe 24/7'}
+                </p>
               </div>
             </div>
 
+            {/* Dr. Lan Anh - Chuyên gia Tâm lý */}
             <div 
-              onClick={() => openDirectChatWithPeer('Mentor Minh Đức', 'Đội ngũ Hỗ trợ')}
+              onClick={() => openDirectChatWithPeer('Dr. Lan Anh', 'Chuyên gia Tâm lý Học đường')}
               className="p-3 bg-white dark:bg-[#263124] rounded-xl border border-[#E5E2D9] dark:border-[#3A4738] flex items-center gap-3 cursor-pointer hover:border-[#8BA888] transition-colors"
             >
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-[#8BA888]/20 flex items-center justify-center text-sm">🎓</div>
+                <div className="w-10 h-10 rounded-full bg-[#D4A373]/20 flex items-center justify-center text-sm border border-[#D4A373]/30">👩‍⚕️</div>
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#263124] rounded-full"></div>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-[#3A4036] dark:text-[#E8ECE6]">Mentor Minh Đức</h4>
-                <p className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]">Đội ngũ Hỗ trợ</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <h4 className="text-xs font-bold text-[#3A4036] dark:text-[#E8ECE6]">Dr. Lan Anh</h4>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#D4A373]/20 text-[#A06428] dark:text-[#D4A373]">
+                    Chuyên gia
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]">Tư vấn tâm lý & Meet 1-1</p>
+              </div>
+            </div>
+
+            {/* Mentor Minh Đức */}
+            <div 
+              onClick={() => openDirectChatWithPeer('Mentor Minh Đức', 'Đội ngũ Hỗ trợ & Đồng hành')}
+              className="p-3 bg-white dark:bg-[#263124] rounded-xl border border-[#E5E2D9] dark:border-[#3A4738] flex items-center gap-3 cursor-pointer hover:border-[#8BA888] transition-colors"
+            >
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-[#8BA888]/20 flex items-center justify-center text-sm border border-[#8BA888]/30">🎓</div>
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#263124] rounded-full"></div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <h4 className="text-xs font-bold text-[#3A4036] dark:text-[#E8ECE6]">Mentor Minh Đức</h4>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#8BA888]/20 text-[#2A4228] dark:text-[#8BA888]">
+                    Cố vấn
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#A4A095] dark:text-[#8E9B8A]">Đội ngũ Đồng hành sinh viên</p>
               </div>
             </div>
           </div>
@@ -613,15 +745,18 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
 
         {/* Crisis Support Block */}
         <div className="p-5 bg-[#5A6E58] rounded-2xl text-white flex flex-col gap-3 shadow-sm">
-          <h4 className="font-serif italic text-lg leading-tight">Khủng hoảng tâm lý?</h4>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🕯️</span>
+            <h4 className="font-serif italic text-lg leading-tight">Khủng hoảng tâm lý?</h4>
+          </div>
           <p className="text-[11px] opacity-90 leading-relaxed">
-            Chúng mình luôn ở đây để lắng nghe bạn 24/7. Nhấn vào đây để kết nối riêng tư với chuyên gia.
+            Chúng mình luôn ở đây để lắng nghe bạn 24/7. Nhấn vào đây để kết nối riêng tư với Admin & Chuyên gia.
           </p>
           <button 
-            onClick={() => openDirectChatWithPeer('ThS. Tâm lý Minh Đức', 'Chuyên gia Tâm lý')}
+            onClick={() => openDirectChatWithPeer('Ban Quản Trị & Ban Cố Vấn', 'Quản Trị Viên & Ban Cố Vấn')}
             className="w-full py-2 bg-white text-[#5A6E58] rounded-lg text-xs font-bold mt-1 uppercase tracking-wider hover:bg-[#FAF9F6] transition-colors"
           >
-            Liên hệ ngay
+            Liên hệ Ban Cố Vấn
           </button>
         </div>
 

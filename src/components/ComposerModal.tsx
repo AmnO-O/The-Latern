@@ -369,14 +369,49 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
 
         {/* AI Moderation Feedback Alert Banner */}
         {moderationFeedback && (
-          <div className="mb-3 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-300 space-y-2 animate-bounce-short">
-            <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
-              <ShieldAlert className="w-4 h-4" />
-              <span>AI Nhắc nhở văn minh & an toàn</span>
+          <div className="mb-3 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-300 space-y-2.5 animate-bounce-short">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
+                <ShieldAlert className="w-4 h-4" />
+                <span>Nhắc nhở an toàn & danh tính</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModerationFeedback(null)}
+                className="text-rose-400 hover:text-rose-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
             <p className="leading-relaxed">{moderationFeedback.flagReason}</p>
             {moderationFeedback.suggestion && (
-              <p className="text-[11px] italic opacity-80">💡 Gợi ý: {moderationFeedback.suggestion}</p>
+              <p className="text-[11px] italic opacity-90">💡 Gợi ý: {moderationFeedback.suggestion}</p>
+            )}
+            {postingMode === 'identity' && (
+              <div className="pt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPostingMode('anonymous');
+                    setModerationFeedback(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#2A4228] text-white text-xs font-bold shadow-xs hover:bg-[#385036] transition-all"
+                >
+                  🎭 Đổi sang chế độ Ẩn danh để gửi ngay
+                </button>
+                {onOpenVerify && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenVerify();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#20281F] border border-[#E5E2D9] text-[#2A4228] dark:text-[#8BA888] text-xs font-semibold hover:underline"
+                  >
+                    Xác thực danh tính
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}

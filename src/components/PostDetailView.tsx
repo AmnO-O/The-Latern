@@ -29,15 +29,19 @@ import {
   Minimize2,
   Mail,
   FileEdit,
-  ShieldAlert
+  ShieldAlert,
+  Video,
+  Calendar
 } from 'lucide-react';
-import { Post, Reply, UserState } from '../types';
+import { Post, Reply, UserState, CounselingAppointment } from '../types';
 import { ambientAudio } from '../lib/audioSynthesizer';
 import { calculateReputationScore } from '../lib/reputationUtils';
 import { ReputationBadge } from './ReputationBadge';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { getEffectiveAvatar } from '../data/avatarPresets';
 import { getFormattedAuthorName, getFormattedReplyAuthorName } from '../lib/authorUtils';
+import { GoogleMeetCard, parseMeetAppointmentFromText } from './GoogleMeetCard';
+import { CounselingScheduleModal } from './CounselingScheduleModal';
 import { PublicProfileTarget } from './PublicProfileModal';
 import { listenToSinglePostInFirestore } from '../lib/firebase';
 
@@ -72,6 +76,7 @@ interface PostDetailViewProps {
   onOpenRatingModal?: (listenerName: string, postId?: string) => void;
   onOpenReportModal?: (listenerName: string, postId?: string) => void;
   onViewPublicProfile?: (target: PublicProfileTarget) => void;
+  onScheduleAppointment?: (appointment: CounselingAppointment) => void;
   isAuthor?: boolean;
 }
 
@@ -95,12 +100,14 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   onOpenRatingModal,
   onOpenReportModal,
   onViewPublicProfile,
+  onScheduleAppointment,
   isAuthor
 }) => {
   const [replyInput, setReplyInput] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
   const [localReplies, setLocalReplies] = useState<Reply[]>(post.replies || []);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const isUserLoggedIn = Boolean(userState?.isLoggedIn || userState?.googleUser?.email);
 
@@ -852,6 +859,23 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
                   <p className="text-xs sm:text-sm text-[#182217] dark:text-[#E8ECE6] leading-relaxed whitespace-pre-line pl-10">
                     {reply.content}
                   </p>
+
+                  {/* Render Google Meet / Appointment card if present */}
+                  {(() => {
+                    const meetData = parseMeetAppointmentFromText(reply.content);
+                    if (!meetData) return null;
+                    return (
+                      <div className="pl-10 pt-2 w-full max-w-lg">
+                        <GoogleMeetCard
+                          meetUrl={meetData.meetUrl}
+                          date={meetData.date}
+                          timeSlot={meetData.timeSlot}
+                          topic={meetData.topic}
+                          counselorName={reply.authorDisplayName || reply.authorName}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })
@@ -860,10 +884,21 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
 
         {/* Counseling Mailbox Security & Empathy Notice */}
         {post.isCounselingMailbox && (
-          <div className="p-4 rounded-3xl bg-emerald-900/10 dark:bg-emerald-950/30 border border-emerald-600/30 space-y-2 animate-fade-in shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 dark:text-emerald-300">
-              <Lock className="w-4 h-4 text-emerald-600" />
-              <span>Hộp Thư Tư Vấn Tâm Lý Trường Học • Bảo Mật 100% Danh Tính</span>
+          <div className="p-4 rounded-3xl bg-emerald-900/10 dark:bg-emerald-950/30 border border-emerald-600/30 space-y-3 animate-fade-in shadow-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                <Lock className="w-4 h-4 text-emerald-600" />
+                <span>Hộp Thư Tư Vấn Tâm Lý Trường Học • Bảo Mật 100% Danh Tính</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(true)}
+                className="px-3 py-1 rounded-full bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white text-[11px] font-bold shrink-0 shadow-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                title="Lên lịch gặp tham vấn 1-1 hoặc tạo Google Meet"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Tạo Google Meet / Đặt lịch</span>
+              </button>
             </div>
             <p className="text-xs text-emerald-900/90 dark:text-emerald-200/90 leading-relaxed">
               Lá thư này được bảo vệ trong Hộp Thư Tư Vấn của <strong>{post.schoolName}</strong> nhằm giải quyết rào cản tâm lý học đường và khoảng cách gia đình. Mọi phản hồi tham vấn chuyên sâu đều đến từ <strong>Ban Cố Vấn</strong> hoặc <strong>Chuyên Gia Tâm Lý Học Đường</strong> đã qua kiểm duyệt chuyên môn.
@@ -1206,6 +1241,36 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Counseling Schedule & Google Meet Modal */}
+      {isScheduleModalOpen && (
+        <CounselingScheduleModal
+          isOpen={isScheduleModalOpen}
+          onClose={() => setIsScheduleModalOpen(false)}
+          counselorName={userState?.isLoggedIn && (userState?.userDisplayName || userState?.googleUser?.displayName) ? (userState?.userDisplayName || userState?.googleUser?.displayName) : 'Cố Vấn Tâm Lý Học Đường'}
+          counselorRole={userState?.userRole === 'admin_moderator' ? 'Quản trị viên / Ban cố vấn' : (userState?.mentorRoleType === 'specialist' || userState?.isSpecialist ? 'Chuyên Gia Tâm Lý Học Đường' : 'Cố Vấn Lắng Nghe')}
+          relatedPostId={post.id}
+          relatedPostTitle={post.title}
+          userState={userState}
+          onConfirmSchedule={(appointment) => {
+            if (onScheduleAppointment) {
+              onScheduleAppointment(appointment);
+            }
+            // Send formatted meeting invitation as a counseling reply to this post
+            const meetText = appointment.meetingType === 'google_meet'
+              ? `📅 LỊCH HẸN THAM VẤN GOOGLE MEET\n📌 Chủ đề: ${appointment.topic}\n🗓 Ngày: ${appointment.date}\n⏰ Khung giờ: ${appointment.timeSlot}\n🎥 Link Google Meet: ${appointment.meetUrl}\n\n🔒 Buổi gặp được bảo mật riêng tư 1-1 theo tiêu chuẩn tâm lý học đường Lantern.`
+              : `📅 LỊCH HẸN GẶP TRỰC TIẾP TẠI TRƯỜNG\n📌 Chủ đề: ${appointment.topic}\n🗓 Ngày: ${appointment.date}\n⏰ Khung giờ: ${appointment.timeSlot}\n📍 Địa điểm: ${appointment.locationName}\n\n🔒 Buổi gặp bảo mật riêng tư 1-1 tại phòng tham vấn học đường.`;
+
+            onAddReply(post.id, meetText, undefined, {
+              isIdentityPublic: true,
+              authorDisplayName: appointment.counselorName || 'Ban Cố Vấn Tâm Lý',
+              authorAvatar: userState?.userAvatar || '🌱',
+              authorCohort: userState?.userCohort || 'Cố vấn chuyên môn',
+              authorMajor: userState?.userMajor || 'Tham vấn học đường'
+            });
+          }}
+        />
       )}
     </div>
   );

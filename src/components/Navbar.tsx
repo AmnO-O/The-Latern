@@ -48,6 +48,7 @@ interface NavbarProps {
   openHealingModal?: () => void;
   openVerify?: () => void;
   unreadNotificationsCount?: number;
+  unreadDirectMessagesCount?: number;
   isDesktopCollapsed?: boolean;
   setIsDesktopCollapsed?: (collapsed: boolean) => void;
   onOpenLogin?: () => void;
@@ -72,6 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openHealingModal,
   openVerify,
   unreadNotificationsCount = 0,
+  unreadDirectMessagesCount = 0,
   isDesktopCollapsed = false,
   setIsDesktopCollapsed,
   onOpenLogin,
@@ -338,12 +340,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Trò chuyện 1-1"
         >
           <div className="flex items-center gap-3.5">
-            <MessageSquare className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
+            <div className="relative">
+              <MessageSquare className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
+              {unreadDirectMessagesCount > 0 && isCollapsed && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#2A4228] border-2 border-[var(--bg-card)]"></span>
+              )}
+            </div>
             {!isCollapsed && <span>Trò chuyện 1-1</span>}
           </div>
-          {!isCollapsed && (
+          {!isCollapsed && unreadDirectMessagesCount > 0 && (
             <span className="bg-[#2A4228] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              1
+              {unreadDirectMessagesCount}
             </span>
           )}
         </button>
