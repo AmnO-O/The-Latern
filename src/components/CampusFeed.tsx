@@ -17,10 +17,14 @@ import {
   HeartHandshake,
   Sparkles,
   UserCheck,
+  CalendarCheck,
+  Video,
+  Calendar,
   X
 } from 'lucide-react';
-import { Post, School, UserState } from '../types';
+import { Post, School, UserState, CounselingAppointment, PeerMentorApplication } from '../types';
 import { PostCard } from './PostCard';
+import { CounselingScheduleModal } from './CounselingScheduleModal';
 
 interface CampusFeedProps {
   school: School;
@@ -45,6 +49,9 @@ interface CampusFeedProps {
   openPeerMentorModal?: () => void;
   openDirectChatWithPeer: (peerName: string, roleTitle: string) => void;
   onViewPublicProfile?: (target: any) => void;
+  appointments?: CounselingAppointment[];
+  mentorApplications?: PeerMentorApplication[];
+  onScheduleAppointment?: (appointment: CounselingAppointment) => void;
 }
 
 export const CampusFeed: React.FC<CampusFeedProps> = ({
@@ -69,9 +76,14 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
   openVerify,
   openPeerMentorModal,
   openDirectChatWithPeer,
-  onViewPublicProfile
+  onViewPublicProfile,
+  appointments = [],
+  mentorApplications = [],
+  onScheduleAppointment
 }) => {
   const isGlobalView = !school || (school.id === 'global' || school.id === 'all-schools');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [selectedCounselorForSchedule, setSelectedCounselorForSchedule] = useState<{ name?: string; role?: string }>({});
 
   const verifiedList = userState?.verifiedSchools || (userState?.selectedSchool ? [userState.selectedSchool] : []);
   const isListenerOrMentorForThisSchool = Boolean(
@@ -569,23 +581,48 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
           </div>
         </div>
 
-        {/* Counseling Privacy Banner */}
+        {/* Counseling Privacy & Appointment Hub Banner */}
         {scopeFilter === 'counseling' && !isGlobalView && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/25 flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0">
-              <HeartHandshake className="w-4 h-4" />
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-emerald-950/20 via-emerald-900/15 to-[#2A4228]/15 border border-emerald-500/30 space-y-3.5 animate-fade-in shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-900/20">
+                  <HeartHandshake className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                      Phòng Tham Vấn Tâm Lý Học Đường
+                    </span>
+                    <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.2 rounded-full font-bold">
+                      100% Ẩn danh
+                    </span>
+                  </div>
+                  <h4 className="font-serif italic font-bold text-sm sm:text-base text-[#182217] dark:text-[#E8ECE6]">
+                    {school.name} • Hỗ trợ tâm lý & Định hướng
+                  </h4>
+                </div>
+              </div>
+
+              {/* Action Button: Book Appointment Directly */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCounselorForSchedule({});
+                  setIsScheduleModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#213520] via-[#2A4228] to-[#3A5238] hover:from-[#1a2b19] hover:to-[#2A4228] text-white text-xs font-bold shadow-md shadow-emerald-900/20 flex items-center gap-2 active:scale-95 transition-all shrink-0 w-full sm:w-auto justify-center"
+              >
+                <Calendar className="w-4 h-4 text-emerald-300" />
+                <span>Đặt Lịch Hẹn Tham Vấn</span>
+              </button>
             </div>
-            <div className="text-xs space-y-0.5 flex-1">
-              <h4 className="font-bold text-[#182217] dark:text-[#E8ECE6] flex items-center gap-1.5">
-                <span>{isSpecialistOrCounselor ? '🌿 Chế độ Chuyên Gia Tâm Lý & Ban Cố Vấn' : '🔒 Hòm Thư Tư Vấn Riêng Tư (Bảo Mật 100%)'}</span>
-                <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.2 rounded-full font-bold">Riêng tư 1-1</span>
-              </h4>
-              <p className="text-[#42493F] dark:text-[#9DA99B] leading-relaxed text-[11px]">
-                {isSpecialistOrCounselor
-                  ? `Bạn có thẩm quyền chuyên môn đọc và tham vấn chuyên sâu cho các tâm sự học đường cần hỗ trợ tâm lý tại ${school.name}.`
-                  : `Chỉ bạn và Chuyên gia Tâm lý / Cố vấn chuyên môn của trường mới có quyền xem và phản hồi các bức thư tư vấn của bạn. Bạn bè cùng trường và Bạn lắng nghe thông thường không thể thấy nội dung này.`}
-              </p>
-            </div>
+
+            <p className="text-[#42493F] dark:text-[#9DA99B] leading-relaxed text-xs">
+              {isSpecialistOrCounselor
+                ? `Chế độ Chuyên gia: Bạn có thẩm quyền chuyên môn đọc và tham vấn cho học sinh tại ${school.name}.`
+                : `Không gian tham vấn an toàn: Bạn có thể đặt lịch gặp Google Meet riêng tư 1-1, gặp trực tiếp tại phòng tham vấn trường hoặc gửi tâm thư bảo mật.`}
+            </p>
           </div>
         )}
 
@@ -831,6 +868,25 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Counseling Schedule & Google Meet Modal */}
+      {isScheduleModalOpen && (
+        <CounselingScheduleModal
+          isOpen={isScheduleModalOpen}
+          onClose={() => setIsScheduleModalOpen(false)}
+          schoolName={school?.name || userState?.selectedSchool?.name || 'Trường của bạn'}
+          schoolId={school?.id || userState?.selectedSchool?.id || 'all-schools'}
+          counselorName={selectedCounselorForSchedule.name}
+          counselorRole={selectedCounselorForSchedule.role}
+          userState={userState}
+          existingAppointments={appointments}
+          mentorApplications={mentorApplications}
+          onConfirmSchedule={(appointment) => {
+            if (onScheduleAppointment) {
+              onScheduleAppointment(appointment);
+            }
+          }}
+        />
       )}
     </div>
   );

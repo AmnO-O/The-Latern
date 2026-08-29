@@ -972,6 +972,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClose={() => setIsNewAppointmentModalOpen(false)}
           counselorName="Ban Cố Vấn & Chuyên Gia Tâm Lý"
           counselorRole="Cố vấn chuyên môn học đường"
+          existingAppointments={appointments}
+          mentorApplications={applications}
           onConfirmSchedule={(appointment) => {
             if (onCreateAppointment) {
               onCreateAppointment(appointment);

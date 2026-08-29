@@ -285,6 +285,109 @@ class AudioSynthesizerManager {
       } catch (e) {}
     };
   }
+
+  // --- 5. Gentle Message Notification Sounds for 1-1 Direct Chat ---
+  public playIncomingMessageSound() {
+    if (isMessageSoundMuted()) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      const now = this.ctx.currentTime;
+
+      // Note 1: F5 (698.46 Hz) gentle warm tone
+      const osc1 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(698.46, now);
+
+      gain1.gain.setValueAtTime(0.001, now);
+      gain1.gain.exponentialRampToValueAtTime(0.12, now + 0.03);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+      osc1.connect(gain1);
+      gain1.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.5);
+
+      // Note 2: A5 (880 Hz) harmonic chime 80ms later
+      const osc2 = this.ctx.createOscillator();
+      const gain2 = this.ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.08);
+
+      gain2.gain.setValueAtTime(0.001, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.14, now + 0.11);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+
+      osc2.connect(gain2);
+      gain2.connect(this.ctx.destination);
+
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.7);
+
+      // Note 3: C6 (1046.5 Hz) soft crystalline overtone
+      const osc3 = this.ctx.createOscillator();
+      const gain3 = this.ctx.createGain();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(1046.5, now + 0.16);
+
+      gain3.gain.setValueAtTime(0.001, now + 0.16);
+      gain3.gain.exponentialRampToValueAtTime(0.06, now + 0.18);
+      gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+      osc3.connect(gain3);
+      gain3.connect(this.ctx.destination);
+
+      osc3.start(now + 0.16);
+      osc3.stop(now + 0.85);
+    } catch (e) {
+      console.warn('AudioContext playback error (waiting for user gesture):', e);
+    }
+  }
+
+  public playOutgoingMessageSound() {
+    if (isMessageSoundMuted()) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.06);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.05, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch (e) {}
+  }
 }
+
+// Sound preferences management (localStorage)
+export const isMessageSoundMuted = (): boolean => {
+  try {
+    const saved = localStorage.getItem('lantern_chat_sound_muted');
+    return saved === 'true';
+  } catch (e) {
+    return false;
+  }
+};
+
+export const setMessageSoundMuted = (muted: boolean) => {
+  try {
+    localStorage.setItem('lantern_chat_sound_muted', muted ? 'true' : 'false');
+  } catch (e) {}
+};
 
 export const ambientAudio = new AudioSynthesizerManager();

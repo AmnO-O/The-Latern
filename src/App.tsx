@@ -40,6 +40,7 @@ import { ListenerReportModal } from './components/ListenerReportModal';
 import { PublicProfileModal, PublicProfileTarget } from './components/PublicProfileModal';
 import { calculateReputationScore } from './lib/reputationUtils';
 import { getFormattedAuthorName } from './lib/authorUtils';
+import { ambientAudio } from './lib/audioSynthesizer';
 import {
   fetchAllPostsFromFirestore,
   listenToPostsFromFirestore,
@@ -1799,6 +1800,7 @@ export default function App() {
           setTypingThreadId(null);
 
           if (data.reply) {
+            ambientAudio.playIncomingMessageSound();
             setThreads(prev => prev.map(t => {
               if (t.id === threadId) {
                 return {
@@ -2199,6 +2201,9 @@ export default function App() {
             openPeerMentorModal={() => setIsPeerMentorModalOpen(true)}
             openDirectChatWithPeer={handleOpenDirectChatWithPeer}
             onViewPublicProfile={(target) => setPublicProfileTarget(target)}
+            appointments={appointments}
+            mentorApplications={mentorApplications}
+            onScheduleAppointment={handleScheduleAppointment}
           />
         )}
 
@@ -2245,6 +2250,8 @@ export default function App() {
             onViewPublicProfile={(target) => setPublicProfileTarget(target)}
             onScheduleAppointment={handleScheduleAppointment}
             isAuthor={isUserAuthor(selectedPost)}
+            appointments={appointments}
+            mentorApplications={mentorApplications}
           />
         )}
 
@@ -2269,6 +2276,9 @@ export default function App() {
               setReportTarget({ listenerName, threadId });
             }}
             onScheduleAppointment={handleScheduleAppointment}
+            userState={userState}
+            appointments={appointments}
+            mentorApplications={mentorApplications}
           />
         )}
 

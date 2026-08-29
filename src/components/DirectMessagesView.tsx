@@ -28,12 +28,15 @@ import {
   MinusCircle,
   ShieldAlert,
   Video,
-  Calendar
+  Calendar,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
-import { DirectThread, DirectMessage, UserState, CounselingAppointment } from '../types';
+import { DirectThread, DirectMessage, UserState, CounselingAppointment, PeerMentorApplication } from '../types';
 import { formatRelativeTime, formatFullDateTime } from '../lib/dateUtils';
 import { GoogleMeetCard, parseMeetAppointmentFromText } from './GoogleMeetCard';
 import { CounselingScheduleModal } from './CounselingScheduleModal';
+import { ambientAudio, isMessageSoundMuted, setMessageSoundMuted } from '../lib/audioSynthesizer';
 
 interface DirectMessagesViewProps {
   threads: DirectThread[];
@@ -52,6 +55,8 @@ interface DirectMessagesViewProps {
   onOpenReportModal?: (listenerName: string, threadId?: string) => void;
   onScheduleAppointment?: (appointment: CounselingAppointment) => void;
   userState?: UserState;
+  appointments?: CounselingAppointment[];
+  mentorApplications?: PeerMentorApplication[];
 }
 
 export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
@@ -70,7 +75,9 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
   onOpenRatingModal,
   onOpenReportModal,
   onScheduleAppointment,
-  userState
+  userState,
+  appointments = [],
+  mentorApplications = []
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(
     activeThreadId || threads[0]?.id || ''
@@ -95,9 +102,11 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
     text: string;
   } | null>(null);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => isMessageSoundMuted());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastProcessedMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (activeThreadId) {
@@ -108,6 +117,19 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
 
   const currentThread = threads.find(t => t.id === selectedThreadId) || threads[0];
   const isPeerTyping = typingThreadId === currentThread?.id;
+
+  // Track new incoming messages in active thread to trigger gentle chime
+  useEffect(() => {
+    if (!currentThread || currentThread.messages.length === 0) return;
+    const lastMsg = currentThread.messages[currentThread.messages.length - 1];
+    
+    // If it's a new incoming message from the peer that we haven't chimed for yet
+    if (lastMsg && !lastMsg.isMe && lastMsg.id !== lastProcessedMessageIdRef.current) {
+      lastProcessedMessageIdRef.current = lastMsg.id;
+      // Play gentle chime
+      ambientAudio.playIncomingMessageSound();
+    }
+  }, [currentThread?.messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,6 +150,18 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleToggleSound = () => {
+    const newMuted = !isSoundMuted;
+    setIsSoundMuted(newMuted);
+    setMessageSoundMuted(newMuted);
+    if (!newMuted) {
+      ambientAudio.playIncomingMessageSound();
+      showToast('🔔 Đã bật âm thanh tin nhắn trò chuyện');
+    } else {
+      showToast('🔕 Đã tắt âm thanh tin nhắn trò chuyện');
+    }
+  };
+
   const handleSelectThread = (threadId: string) => {
     setSelectedThreadId(threadId);
     if (onSelectThread) {
@@ -140,6 +174,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
     if (e) e.preventDefault();
     if (!messageInput.trim() || !currentThread) return;
     onSendMessage(currentThread.id, messageInput.trim());
+    ambientAudio.playOutgoingMessageSound();
     setMessageInput('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -519,6 +554,23 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                   {currentThread.threadType === 'ai' || currentThread.peerRole === 'ai_lantern' ? '✨ AI 24/7' : '🔒 1-1'}
                 </span>
 
+                {/* Sound Notification Mute / Unmute Toggle */}
+                <button
+                  onClick={handleToggleSound}
+                  className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs ${
+                    isSoundMuted
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                      : 'hover:bg-black/5 dark:hover:bg-white/5 text-[#2A4228] dark:text-[#8BA888]'
+                  }`}
+                  title={isSoundMuted ? 'Bật chuông tin nhắn mới (Đang tắt)' : 'Tắt chuông tin nhắn mới (Đang bật)'}
+                >
+                  {isSoundMuted ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                </button>
+
                 {/* Options Menu Button in Header */}
                 <div className="relative">
                   <button
@@ -537,6 +589,28 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1E261D] border border-[#E5E2D9] dark:border-[#3A4738] rounded-2xl shadow-xl py-1.5 z-40 text-xs text-[#3A4036] dark:text-[#E8ECE6] animate-fade-in"
                     >
+                      {/* Toggle Sound Notification in Menu */}
+                      <button
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          handleToggleSound();
+                        }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[#2A4228] dark:text-[#8BA888]"
+                      >
+                        {isSoundMuted ? (
+                          <>
+                            <Volume2 className="w-4 h-4 text-emerald-600" />
+                            <span>Bật âm chuông tin nhắn</span>
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX className="w-4 h-4 text-amber-600" />
+                            <span>Tắt âm chuông tin nhắn</span>
+                          </>
+                        )}
+                      </button>
+
+                      <div className="my-1 border-t border-[#E5E2D9] dark:border-[#3A4738]"></div>
                       {/* Healing Rating Button */}
                       {onOpenRatingModal && currentThread.id !== 'thread-ai-companion' && (
                         <button
@@ -1102,9 +1176,14 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
         <CounselingScheduleModal
           isOpen={isScheduleModalOpen}
           onClose={() => setIsScheduleModalOpen(false)}
+          schoolName={currentThread.schoolName || userState?.selectedSchool?.name || 'Trường của bạn'}
+          schoolId={userState?.selectedSchool?.id || 'all-schools'}
           counselorName={currentThread.peerRole === 'ai_lantern' ? 'Cố Vấn Tâm Lý Học Đường' : currentThread.peerName}
           counselorRole={currentThread.roleTitle}
           userState={userState}
+          relatedThreadId={currentThread.id}
+          existingAppointments={appointments}
+          mentorApplications={mentorApplications}
           onConfirmSchedule={(appointment) => {
             if (onScheduleAppointment) {
               onScheduleAppointment(appointment);
@@ -1115,7 +1194,7 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
               : `📅 LỊCH HẸN GẶP TRỰC TIẾP TẠI TRƯỜNG\n📌 Chủ đề: ${appointment.topic}\n🗓 Ngày: ${appointment.date}\n⏰ Khung giờ: ${appointment.timeSlot}\n📍 Địa điểm: ${appointment.locationName}\n\n🔒 Buổi gặp bảo mật riêng tư 1-1 tại phòng tham vấn học đường.`;
 
             onSendMessage(currentThread.id, meetText);
-            setToastMessage('Đã tạo lịch hẹn và gửi link Google Meet vào hội thoại!');
+            setToastMessage('Đã tạo lịch hẹn và gửi thông tin buổi gặp vào hội thoại!');
             setTimeout(() => setToastMessage(null), 3000);
           }}
         />

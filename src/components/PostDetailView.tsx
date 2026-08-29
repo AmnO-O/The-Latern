@@ -33,7 +33,7 @@ import {
   Video,
   Calendar
 } from 'lucide-react';
-import { Post, Reply, UserState, CounselingAppointment } from '../types';
+import { Post, Reply, UserState, CounselingAppointment, PeerMentorApplication } from '../types';
 import { ambientAudio } from '../lib/audioSynthesizer';
 import { calculateReputationScore } from '../lib/reputationUtils';
 import { ReputationBadge } from './ReputationBadge';
@@ -78,6 +78,8 @@ interface PostDetailViewProps {
   onViewPublicProfile?: (target: PublicProfileTarget) => void;
   onScheduleAppointment?: (appointment: CounselingAppointment) => void;
   isAuthor?: boolean;
+  appointments?: CounselingAppointment[];
+  mentorApplications?: PeerMentorApplication[];
 }
 
 export const PostDetailView: React.FC<PostDetailViewProps> = ({
@@ -101,7 +103,9 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
   onOpenReportModal,
   onViewPublicProfile,
   onScheduleAppointment,
-  isAuthor
+  isAuthor,
+  appointments = [],
+  mentorApplications = []
 }) => {
   const [replyInput, setReplyInput] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
@@ -1248,11 +1252,15 @@ export const PostDetailView: React.FC<PostDetailViewProps> = ({
         <CounselingScheduleModal
           isOpen={isScheduleModalOpen}
           onClose={() => setIsScheduleModalOpen(false)}
+          schoolName={post.schoolName || userState?.selectedSchool?.name || 'Trường của bạn'}
+          schoolId={post.schoolId || userState?.selectedSchool?.id || 'all-schools'}
           counselorName={userState?.isLoggedIn && (userState?.userDisplayName || userState?.googleUser?.displayName) ? (userState?.userDisplayName || userState?.googleUser?.displayName) : 'Cố Vấn Tâm Lý Học Đường'}
           counselorRole={userState?.userRole === 'admin_moderator' ? 'Quản trị viên / Ban cố vấn' : (userState?.mentorRoleType === 'specialist' || userState?.isSpecialist ? 'Chuyên Gia Tâm Lý Học Đường' : 'Cố Vấn Lắng Nghe')}
           relatedPostId={post.id}
           relatedPostTitle={post.title}
           userState={userState}
+          existingAppointments={appointments}
+          mentorApplications={mentorApplications}
           onConfirmSchedule={(appointment) => {
             if (onScheduleAppointment) {
               onScheduleAppointment(appointment);
