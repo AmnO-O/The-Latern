@@ -32,6 +32,7 @@ import { PostCard } from './PostCard';
 import { calculateReputationScore, getReputationRank, getNextRankProgress } from '../lib/reputationUtils';
 import { ReputationBadge, ReputationIcon } from './ReputationBadge';
 import { AVATAR_PRESETS, getEffectiveAvatar } from '../data/avatarPresets';
+import { syncUserSchoolVerificationInFirestore } from '../lib/firebase';
 
 interface ProfileViewProps {
   userState: UserState;
@@ -272,6 +273,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       try {
         localStorage.setItem('lantern_user_state', JSON.stringify(updatedState));
       } catch (e) {}
+
+      if (prev.googleUser?.uid) {
+        syncUserSchoolVerificationInFirestore(prev.googleUser.uid, {
+          verifiedSchools: updatedVerifiedSchools,
+          verificationStatus: 'verified',
+          schoolVerifications: updatedSchoolVerifications,
+          displayName: trimmedName,
+          verifiedFullName: trimmedName,
+          verifiedMajor: targetSchool.major,
+          verifiedCohort: targetSchool.cohort,
+          defaultCohort: targetSchool.cohort,
+          schoolCohorts: updatedCohorts,
+          isIdentityLocked: true
+        });
+      }
 
       return updatedState;
     });

@@ -75,7 +75,7 @@ async function testFirestoreConnection() {
 testFirestoreConnection();
 
 // Auth Helpers
-export const loginWithGoogle = async (): Promise<User | null> => {
+export const loginWithGoogle = async (fallbackLocalState?: Partial<UserState>): Promise<User | null> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
@@ -85,25 +85,56 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       const userDocRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userDocRef);
       
+      const verifiedList = fallbackLocalState?.verifiedSchools || [];
+      const isVer = (fallbackLocalState?.verificationStatus === 'verified' || verifiedList.length > 0);
+
       if (!userSnap.exists()) {
-        const anonNumber = Math.floor(100 + Math.random() * 900);
-        await setDoc(userDocRef, {
+        const anonNumber = fallbackLocalState?.userAnonNumber || Math.floor(100 + Math.random() * 900);
+        await setDoc(userDocRef, sanitizeForFirestore({
           uid: user.uid,
           email: user.email || '',
-          displayName: user.displayName || 'Người dùng Google',
-          photoURL: user.photoURL || '',
+          displayName: fallbackLocalState?.displayName || user.displayName || 'Người dùng Google',
+          photoURL: fallbackLocalState?.customAvatarUrl || user.photoURL || '',
           userAnonNumber: anonNumber,
-          verificationStatus: 'unverified',
-          selectedSchoolId: 'school-1',
-          selectedSchoolName: 'THPT Nguyễn Du',
-          hugsGivenCount: 0,
-          userRole: 'student',
-          verifiedSchoolIds: [],
-          verifiedSchools: [],
-          schoolVerifications: {},
+          verificationStatus: isVer ? 'verified' : 'unverified',
+          selectedSchool: fallbackLocalState?.selectedSchool || undefined,
+          selectedSchoolId: fallbackLocalState?.selectedSchool?.id || 'school-1',
+          selectedSchoolName: fallbackLocalState?.selectedSchool?.name || 'THPT Nguyễn Du',
+          hugsGivenCount: fallbackLocalState?.hugsGivenCount || 0,
+          hugsReceivedCount: fallbackLocalState?.hugsReceivedCount || 0,
+          userRole: fallbackLocalState?.userRole || 'student',
+          verifiedSchoolIds: verifiedList.map(s => s.id),
+          verifiedSchools: verifiedList,
+          schoolVerifications: fallbackLocalState?.schoolVerifications || {},
+          verifiedFullName: fallbackLocalState?.verifiedFullName || user.displayName,
+          verifiedMajor: fallbackLocalState?.verifiedMajor,
+          verifiedCohort: fallbackLocalState?.verifiedCohort,
+          defaultCohort: fallbackLocalState?.defaultCohort,
+          schoolCohorts: fallbackLocalState?.schoolCohorts || {},
+          isIdentityLocked: fallbackLocalState?.isIdentityLocked ?? false,
+          reputationScore: fallbackLocalState?.reputationScore ?? 0,
           lastSyncedAt: Date.now(),
           createdAt: Date.now()
-        });
+        }));
+      } else {
+        // If user document exists, merge any existing local verified schools if Firestore was empty
+        const existingData = userSnap.data() || {};
+        const firestoreVerified = Array.isArray(existingData.verifiedSchools) ? existingData.verifiedSchools : [];
+        if (verifiedList.length > 0 && firestoreVerified.length === 0) {
+          await setDoc(userDocRef, sanitizeForFirestore({
+            verifiedSchools: verifiedList,
+            verificationStatus: 'verified',
+            schoolVerifications: {
+              ...(existingData.schoolVerifications || {}),
+              ...(fallbackLocalState?.schoolVerifications || {})
+            },
+            verifiedFullName: fallbackLocalState?.verifiedFullName || existingData.verifiedFullName,
+            verifiedMajor: fallbackLocalState?.verifiedMajor || existingData.verifiedMajor,
+            verifiedCohort: fallbackLocalState?.verifiedCohort || existingData.verifiedCohort,
+            isIdentityLocked: fallbackLocalState?.isIdentityLocked ?? existingData.isIdentityLocked,
+            lastSyncedAt: Date.now()
+          }), { merge: true });
+        }
       }
     } catch (dbErr) {
       console.warn('Could not sync user profile to Firestore:', dbErr);

@@ -1159,7 +1159,7 @@ export default function App() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const user = await loginWithGoogle();
+      const user = await loginWithGoogle(userState);
       if (!user) return;
       setUserState(prev => ({
         ...prev,
@@ -2516,7 +2516,15 @@ export default function App() {
                 verifiedSchools: newList,
                 selectedSchool: school,
                 verificationStatus: 'verified',
-                schoolVerifications: updatedVerifications
+                schoolVerifications: updatedVerifications,
+                displayName: extractedName || prev.displayName || 'Học sinh / Sinh viên',
+                verifiedFullName: extractedName,
+                verifiedMajor: extractedMajor,
+                verifiedCohort: extractedCohort,
+                defaultCohort: extractedCohort || prev.defaultCohort,
+                schoolCohorts: updatedCohorts,
+                isIdentityLocked: true,
+                reputationScore: calculateReputationScore(true, prev.hugsReceivedCount || 0)
               });
             }
 
