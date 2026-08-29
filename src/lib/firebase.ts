@@ -797,10 +797,10 @@ export const listenToDirectThreadsFromFirestore = (
   userDisplayName: string,
   userAnonNumber: number,
   myPostIds: string[],
+  isAdmin: boolean,
   callback: (threads: any[]) => void
 ) => {
   const threadsRef = collection(db, 'direct_threads');
-
   return onSnapshot(threadsRef, (snapshot) => {
     if (snapshot.empty) {
       callback([]);
@@ -822,10 +822,13 @@ export const listenToDirectThreadsFromFirestore = (
                             participants.some(p => p.includes(String(userAnonNumber)) || p === currentUserId);
       const isRelatedToMyPost = data.relatedPostId ? myPostIds.includes(data.relatedPostId) : false;
       const isMyAuthorThread = data.peerName?.includes(myAuthorAnonTag) || data.roleTitle?.includes(myAuthorAnonTag);
+      
+      const isThreadForAdmin = isAdmin && (data.peerName?.includes('Admin') || data.peerName?.includes('Quản Trị') || data.roleTitle?.includes('Quản Trị') || data.roleTitle?.includes('Admin'));
 
       // Auto-cleanup / Ephemeral expiry: If thread is older than 24h and inactive (lastMessageAt > 24h ago with <= 2 messages)
       const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
       const isExpired24h = data.lastMessageAt && (Date.now() - data.lastMessageAt > TWENTY_FOUR_HOURS_MS) && messages.length <= 2;
+
       if (isExpired24h && threadId !== 'thread-ai-companion' && data.threadType !== 'ai') {
         // Automatically delete from Firestore to reduce storage load & preserve privacy
         deleteDoc(docSnap.ref).catch(() => {});
@@ -833,13 +836,15 @@ export const listenToDirectThreadsFromFirestore = (
       }
 
       // If user is a participant or post author or thread is public/demo
-      if (isParticipant || isRelatedToMyPost || isMyAuthorThread) {
+      if (isParticipant || isRelatedToMyPost || isMyAuthorThread || isThreadForAdmin) {
         // Map messages to include proper isMe flag
         const mappedMessages = messages
           .filter(m => !m.deletedForUsers?.includes(currentUserId))
           .map(m => {
+            const isAdminMessage = isAdmin && (m.senderName?.includes('Admin') || m.senderName?.includes('Quản Trị') || (m.senderId === 'peer-listener' && (m.senderRole === 'expert' || m.senderRole === 'admin')));
             const isMe = m.senderId === currentUserId || 
-                         (m.senderName && (m.senderName === userDisplayName || m.senderName === 'Bạn' || m.senderName === myAnonName));
+                         (m.senderName && (m.senderName === userDisplayName || m.senderName === 'Bạn' || m.senderName === myAnonName)) ||
+                         isAdminMessage;
             return {
               id: m.id,
               senderId: m.senderId,
@@ -866,6 +871,15 @@ export const listenToDirectThreadsFromFirestore = (
             peerDisplayName = data.participantNames[otherUserId];
             roleTitle = `Người gửi lời an ủi • ${data.relatedSchoolName || 'Campus'}`;
           }
+        } else if (isThreadForAdmin) {
+          // If admin is viewing this thread, the "peer" is actually the student
+          const studentMsg = messages.find(m => m.senderRole === 'student' || m.senderId !== 'peer-listener');
+          if (studentMsg && studentMsg.senderName && !studentMsg.senderName.includes('Quản Trị')) {
+            peerDisplayName = studentMsg.senderName;
+          } else {
+            peerDisplayName = `Học sinh đang kết nối`;
+          }
+          roleTitle = 'Học sinh / Người dùng';
         }
 
         firestoreThreads.push({

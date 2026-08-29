@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ActiveTab, 
   School, 
@@ -213,18 +213,40 @@ export default function App() {
     }
   }, [posts, activeTab, selectedPost]);
   
+  // Set of deleted thread IDs to prevent ghost threads from resurrecting on reload or Firestore sync
+  const [deletedThreadIds, setDeletedThreadIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('lantern_deleted_thread_ids');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return new Set(parsed);
+      }
+    } catch (e) {}
+    return new Set<string>();
+  });
+  const deletedThreadIdsRef = useRef(deletedThreadIds);
+  useEffect(() => {
+    deletedThreadIdsRef.current = deletedThreadIds;
+  }, [deletedThreadIds]);
+
   // Threads state with persistence across reloads
   const [threads, setThreads] = useState<DirectThread[]>(() => {
     try {
       const saved = localStorage.getItem('lantern_direct_threads');
+      const savedDeleted = localStorage.getItem('lantern_deleted_thread_ids');
+      const deletedSet = new Set(savedDeleted ? JSON.parse(savedDeleted) : []);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Filter out legacy mock demo threads (keep AI companion and real custom threads)
+          // Filter out deleted threads and legacy mock demo threads (keep AI companion and real custom/peer threads)
           const filtered = parsed.filter((t: DirectThread) => 
-            t.id === 'thread-ai-companion' || 
-            t.id.startsWith('thread-custom-') || 
-            (t.id.startsWith('thread-author-') && t.id !== 'thread-author-p1')
+            t && t.id && !deletedSet.has(t.id) && (
+              t.id === 'thread-ai-companion' || 
+              t.id.startsWith('thread-custom-') || 
+              t.id.startsWith('thread-peer-') ||
+              t.id.startsWith('thread-post-') ||
+              (t.id.startsWith('thread-author-') && t.id !== 'thread-author-p1')
+            )
           );
           if (filtered.length > 0) return filtered;
         }
@@ -893,6 +915,7 @@ export default function App() {
       userDisplayName,
       userAnonNumber,
       myPostIds,
+      isAdmin,
       (firestoreThreads) => {
         setThreads(prev => {
           // Keep the standard AI Companion thread always readily available
@@ -917,26 +940,10 @@ export default function App() {
             ]
           };
 
-          if (!firestoreThreads || firestoreThreads.length === 0) {
-            return prev.length > 0 ? prev : [aiThread];
-          }
+          const currentDeleted = deletedThreadIdsRef.current;
+          const validFirestoreThreads = (firestoreThreads || []).filter(ft => ft && ft.id && !currentDeleted.has(ft.id));
 
-          const map = new Map<string, DirectThread>();
-          map.set(aiThread.id, aiThread);
-
-          // Preserve any existing local threads
-          prev.forEach(t => {
-            if (t && t.id) map.set(t.id, t);
-          });
-
-          // Merge latest firestore threads
-          if (firestoreThreads && firestoreThreads.length > 0) {
-            firestoreThreads.forEach(ft => {
-              if (ft && ft.id) map.set(ft.id, ft);
-            });
-          }
-
-          return Array.from(map.values());
+          return [aiThread, ...validFirestoreThreads];
         });
       }
     );
@@ -944,7 +951,7 @@ export default function App() {
     return () => {
       if (unsubscribeThreads) unsubscribeThreads();
     };
-  }, [currentUserId, userDisplayName, userState.userAnonNumber, myPostIds]);
+  }, [currentUserId, userDisplayName, userState.userAnonNumber, myPostIds, isAdmin]);
 
   // Load and listen to posts and schools from Firestore in real-time
   useEffect(() => {
@@ -1727,8 +1734,8 @@ export default function App() {
     const newMsgItem: FirestoreMessageItem = {
       id: newMsgId,
       senderId: currentUserId,
-      senderName: userDisplayName,
-      senderRole: userState.userRole || 'student',
+      senderName: (isAdmin && userState.userRole === 'admin_moderator') ? 'Ban Quản Trị' : userDisplayName,
+      senderRole: (isAdmin && userState.userRole === 'admin_moderator') ? 'admin' : (userState.userRole || 'student'),
       text: text,
       timestamp: 'Vừa xong',
       createdAt: Date.now()
@@ -1876,6 +1883,17 @@ export default function App() {
     const cleanCurrentId = currentUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const newThreadId = `thread-post-${post.id}-${cleanCurrentId}`;
 
+    // Remove from deleted set if previously deleted
+    setDeletedThreadIds(prev => {
+      if (!prev.has(newThreadId)) return prev;
+      const updated = new Set(prev);
+      updated.delete(newThreadId);
+      try {
+        localStorage.setItem('lantern_deleted_thread_ids', JSON.stringify(Array.from(updated)));
+      } catch (e) {}
+      return updated;
+    });
+
     const existing = threads.find(t => t.id === newThreadId || t.relatedPostId === post.id);
     if (existing) {
       setActiveThreadId(existing.id);
@@ -1940,6 +1958,17 @@ export default function App() {
     const cleanPeerId = peerName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     const cleanCurrentId = currentUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const newThreadId = `thread-peer-${cleanPeerId}-${cleanCurrentId}`;
+
+    // Remove from deleted set if previously deleted
+    setDeletedThreadIds(prev => {
+      if (!prev.has(newThreadId)) return prev;
+      const updated = new Set(prev);
+      updated.delete(newThreadId);
+      try {
+        localStorage.setItem('lantern_deleted_thread_ids', JSON.stringify(Array.from(updated)));
+      } catch (e) {}
+      return updated;
+    });
 
     const existing = threads.find(t => t.id === newThreadId || t.peerName === peerName);
     if (existing) {
@@ -2011,14 +2040,31 @@ export default function App() {
 
   // Delete/Leave thread
   const handleDeleteThread = (threadId: string) => {
+    if (threadId === 'thread-ai-companion') return;
+
+    // 1. Mark as deleted in state & localStorage so snapshot won't restore it
+    setDeletedThreadIds(prev => {
+      const updated = new Set(prev);
+      updated.add(threadId);
+      try {
+        localStorage.setItem('lantern_deleted_thread_ids', JSON.stringify(Array.from(updated)));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Remove from local thread state
     setThreads(prev => prev.filter(t => t.id !== threadId));
+
+    // 3. Delete document from Firestore
     deleteDirectThreadFromFirestore(threadId).catch(err => console.warn('Delete thread error:', err));
-    if (activeThreadId === threadId) {
-      const remaining = threads.filter(t => t.id !== threadId);
-      if (remaining.length > 0) {
-        setActiveThreadId(remaining[0].id);
+
+    // 4. Switch active thread to AI companion if current active was deleted
+    setActiveThreadId(prevActive => {
+      if (prevActive === threadId) {
+        return 'thread-ai-companion';
       }
-    }
+      return prevActive;
+    });
   };
 
   // Revoke / Unsend message for everyone

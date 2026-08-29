@@ -467,9 +467,13 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                           e.stopPropagation();
                           if (confirm('Bạn có chắc muốn xóa cuộc trò chuyện này không?')) {
                             onDeleteThread(thread.id);
+                            if (isSelected) {
+                              setMobileView('list');
+                            }
+                            showToast('Đã xóa cuộc trò chuyện');
                           }
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-500 text-[#8E9B8A] transition-opacity shrink-0"
+                        className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 hover:text-rose-500 text-[#8E9B8A] transition-opacity shrink-0"
                         title="Xóa hội thoại"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -663,6 +667,8 @@ export const DirectMessagesView: React.FC<DirectMessagesViewProps> = ({
                             setIsHeaderMenuOpen(false);
                             if (confirm('Bạn có chắc muốn xóa cuộc trò chuyện này?')) {
                               onDeleteThread(currentThread.id);
+                              setMobileView('list');
+                              showToast('Đã xóa cuộc trò chuyện');
                             }
                           }}
                           className="w-full px-3.5 py-2 text-left hover:bg-rose-500/10 flex items-center gap-2 text-rose-600 dark:text-rose-400"
