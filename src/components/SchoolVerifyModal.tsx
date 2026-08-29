@@ -263,7 +263,7 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
 
       const normalizedDetected = normalize(detectedName);
 
-      // Prioritize exact or highest quality match
+      // Prioritize exact or highest quality match from schools list
       let targetSchool = schools.find(s => {
         const sNorm = normalize(s.name);
         return sNorm === normalizedDetected;
@@ -276,6 +276,13 @@ export const SchoolVerifyModal: React.FC<SchoolVerifyModalProps> = ({
           return (sNorm.length > 5 && normalizedDetected.includes(sNorm)) ||
                  (normalizedDetected.length > 5 && sNorm.includes(normalizedDetected));
         });
+      }
+
+      if (!targetSchool && userState?.selectedSchool) {
+        const selNorm = normalize(userState.selectedSchool.name);
+        if (selNorm === normalizedDetected || (selNorm.length > 5 && normalizedDetected.includes(selNorm))) {
+          targetSchool = userState.selectedSchool;
+        }
       }
 
       // If not in existing list, generate a clean School record for the newly detected school

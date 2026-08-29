@@ -2444,25 +2444,30 @@ export default function App() {
         schools={schools}
         userState={userState}
         onCompleteVerification={(school, verificationData) => {
-          const updatedSchool = {
+          const existingSchool = schools.find(s => s.id === school.id || s.name.toLowerCase().trim() === school.name.toLowerCase().trim());
+          const updatedSchool: School = {
             ...school,
-            verifiedCount: Math.max((school.verifiedCount || 0) + 1, 1)
+            ...(existingSchool || {}),
+            name: existingSchool?.name || school.name,
+            logoUrl: existingSchool?.logoUrl || school.logoUrl,
+            coverUrl: existingSchool?.coverUrl || school.coverUrl,
+            verifiedCount: Math.max((existingSchool?.verifiedCount || school.verifiedCount || 0) + 1, 1)
           };
           setSelectedSchool(updatedSchool);
           setActiveTab('feed');
           setSchools(prev => {
-            if (!prev.some(s => s.id === school.id)) {
+            if (!prev.some(s => s.id === updatedSchool.id)) {
               return [...prev, updatedSchool];
             }
-            return prev.map(s => s.id === school.id ? updatedSchool : s);
+            return prev.map(s => s.id === updatedSchool.id ? { ...s, ...updatedSchool, logoUrl: s.logoUrl || updatedSchool.logoUrl } : s);
           });
           updateSchoolInFirestore(updatedSchool.id, updatedSchool).catch(err => {
             console.warn('Persist verified school error:', err);
           });
           setUserState(prev => {
             const currentList = prev.verifiedSchools || (prev.selectedSchool ? [prev.selectedSchool] : []);
-            const alreadyVerified = currentList.some(s => s.id === school.id);
-            const newList = alreadyVerified ? currentList : [...currentList, updatedSchool];
+            const alreadyVerified = currentList.some(s => s.id === updatedSchool.id);
+            const newList = alreadyVerified ? currentList.map(s => s.id === updatedSchool.id ? updatedSchool : s) : [...currentList, updatedSchool];
             
             const aiData = verificationData?.aiResult || {};
             const extractedName = aiData.extractedStudentName || prev.verifiedFullName || prev.displayName;
@@ -2471,10 +2476,10 @@ export default function App() {
 
             const updatedVerifications = {
               ...(prev.schoolVerifications || {}),
-              [school.id]: {
-                schoolId: school.id,
-                schoolName: school.name,
-                schoolType: school.type,
+              [updatedSchool.id]: {
+                schoolId: updatedSchool.id,
+                schoolName: updatedSchool.name,
+                schoolType: updatedSchool.type,
                 verifiedAt: Date.now(),
                 method: verificationData?.method || 'gemini_ocr',
                 role: verificationData?.role || 'student',
@@ -2489,21 +2494,22 @@ export default function App() {
 
             const updatedCohorts = {
               ...(prev.schoolCohorts || {}),
-              ...(extractedCohort ? { [school.id]: extractedCohort } : {})
+              ...(extractedCohort ? { [updatedSchool.id]: extractedCohort } : {})
             };
 
             const updatedState: UserState = {
               ...prev,
               verificationStatus: 'verified',
-              selectedSchool: school,
+              selectedSchool: updatedSchool,
               verifiedSchools: newList,
               schoolVerifications: updatedVerifications,
               schoolCohorts: updatedCohorts,
-              // Fixed & locked identity
-              displayName: extractedName || prev.displayName || 'Học sinh / Sinh viên',
-              verifiedFullName: extractedName,
-              verifiedMajor: extractedMajor,
-              verifiedCohort: extractedCohort,
+              // Strictly preserve user custom avatar and display profile settings
+              customAvatarUrl: prev.customAvatarUrl,
+              displayName: prev.displayName || extractedName || 'Học sinh / Sinh viên',
+              verifiedFullName: extractedName || prev.verifiedFullName,
+              verifiedMajor: extractedMajor || prev.verifiedMajor,
+              verifiedCohort: extractedCohort || prev.verifiedCohort,
               defaultCohort: extractedCohort || prev.defaultCohort,
               isIdentityLocked: true,
               reputationScore: calculateReputationScore(true, prev.hugsReceivedCount || 0),
@@ -2514,13 +2520,14 @@ export default function App() {
             if (prev.googleUser?.uid) {
               syncUserSchoolVerificationInFirestore(prev.googleUser.uid, {
                 verifiedSchools: newList,
-                selectedSchool: school,
+                selectedSchool: updatedSchool,
                 verificationStatus: 'verified',
                 schoolVerifications: updatedVerifications,
-                displayName: extractedName || prev.displayName || 'Học sinh / Sinh viên',
-                verifiedFullName: extractedName,
-                verifiedMajor: extractedMajor,
-                verifiedCohort: extractedCohort,
+                displayName: prev.displayName || extractedName || 'Học sinh / Sinh viên',
+                customAvatarUrl: prev.customAvatarUrl,
+                verifiedFullName: extractedName || prev.verifiedFullName,
+                verifiedMajor: extractedMajor || prev.verifiedMajor,
+                verifiedCohort: extractedCohort || prev.verifiedCohort,
                 defaultCohort: extractedCohort || prev.defaultCohort,
                 schoolCohorts: updatedCohorts,
                 isIdentityLocked: true,

@@ -428,20 +428,10 @@ Trả về duy nhất JSON có cấu trúc (không dùng markdown backticks):
       const ai = getGeminiClient();
 
       if (!ai) {
-        return res.json({
-          isValidStudentId: true,
-          isMatch: true,
-          confidenceScore: 0.95,
-          detectedDocumentType: "Thẻ Học sinh/Sinh viên",
-          extractedSchool: fallbackSchoolName || "Trường Đại học Bách Khoa TP.HCM",
-          extractedStudentName: "Nguyễn Hoàng Nam",
-          extractedMajor: "Công nghệ thông tin",
-          extractedCohort: "K22 (2022 - 2026)",
-          extractedStudentId: "2212****8",
-          schoolType: "university",
-          location: "TP. Hồ Chí Minh",
-          verificationStatus: "verified",
-          reason: `AI đã nhận diện thành công thẻ trường và khóa danh tính cho ${fallbackSchoolName || "học đường"}.`
+        return res.status(503).json({
+          isValidStudentId: false,
+          verificationStatus: "rejected",
+          reason: "Hệ thống AI Vision OCR chưa sẵn sàng hoặc chưa cấu hình API Key. Vui lòng thử phương thức Xác thực Email Trường."
         });
       }
 
@@ -503,7 +493,7 @@ Quy tắc phân loại:
 Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown backticks hay văn bản thừa).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-3.7-flash",
         contents: [
           {
             role: "user",
