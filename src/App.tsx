@@ -1232,6 +1232,17 @@ export default function App() {
     authorCohort?: string;
     authorMajor?: string;
   }) => {
+    // Enforce authentication for campus-only and counseling mailbox posts
+    if ((postData.isPublic === false || postData.isCounselingMailbox) && !userState.isLoggedIn) {
+      return {
+        isSafe: false,
+        flagReason: postData.isCounselingMailbox 
+          ? 'Bạn cần đăng nhập tài khoản để gửi thư vào Hòm Thư Tư Vấn và nhận phản hồi từ Chuyên gia.'
+          : 'Bạn cần đăng nhập tài khoản để gửi thư vào Bảng tin Nội Bộ Trường.',
+        suggestion: 'Vui lòng đăng nhập bằng Google hoặc chọn Sảnh Chung để chia sẻ.'
+      };
+    }
+
     let moderationResult: {
       isSafe: boolean;
       flagReason?: string;

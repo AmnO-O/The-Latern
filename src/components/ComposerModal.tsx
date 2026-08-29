@@ -25,7 +25,9 @@ import {
   Zap,
   Send,
   HeartHandshake,
-  MessageSquareHeart
+  MessageSquareHeart,
+  LogIn,
+  AlertCircle
 } from 'lucide-react';
 
 interface ComposerModalProps {
@@ -295,6 +297,46 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
         suggestion: 'Hãy nhấn vào Cài đặt Hồ sơ để Khóa danh tính (1 lần duy nhất) hoặc Quét Thẻ AI.'
       });
       return;
+    }
+
+    // Require Login for Campus-Only posting
+    if (postScope === 'campus') {
+      if (!isUserLoggedIn) {
+        setIsSubmitting(false);
+        setModerationFeedback({
+          flagReason: 'Bạn cần đăng nhập tài khoản học sinh / sinh viên để gửi thư vào Nội Bộ Trường.',
+          suggestion: 'Vui lòng nhấn Đăng nhập bằng Google để tiếp tục, hoặc chọn Sảnh Chung để chia sẻ với tư cách khách vãng lai.'
+        });
+        return;
+      }
+      if (isGlobalLounge) {
+        setIsSubmitting(false);
+        setModerationFeedback({
+          flagReason: 'Bạn đang chọn phạm vi Nội Bộ Trường nhưng Hộp thư trường đang là Sảnh Chung.',
+          suggestion: 'Vui lòng chọn một trường học cụ thể ở danh sách Hộp thư trường bên dưới.'
+        });
+        return;
+      }
+    }
+
+    // Require Login for Counseling Mailbox
+    if (postScope === 'counseling_mailbox') {
+      if (!isUserLoggedIn) {
+        setIsSubmitting(false);
+        setModerationFeedback({
+          flagReason: 'Bạn cần đăng nhập tài khoản để gửi thư vào Hòm Thư Tư Vấn.',
+          suggestion: 'Đăng nhập giúp Chuyên gia Tâm lý có thể gửi phản hồi riêng tư bảo mật đến bạn (danh tính bạn vẫn được bảo mật 100% ẩn danh).'
+        });
+        return;
+      }
+      if (isGlobalLounge) {
+        setIsSubmitting(false);
+        setModerationFeedback({
+          flagReason: 'Hòm Thư Tư Vấn cần được gửi đến Phòng Tư Vấn Tâm Lý của một trường cụ thể.',
+          suggestion: 'Vui lòng chọn trường học có Chuyên gia Tâm lý trong danh sách Hộp thư trường bên dưới.'
+        });
+        return;
+      }
     }
 
     const result = await onSubmitPost({
@@ -764,18 +806,25 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   setPostScope('campus');
                   if (selectedSchoolId === 'all-schools' || selectedSchoolId === 'all') {
                     const firstSchool = schools.find(s => s.id !== 'all-schools' && s.id !== 'all') || schools[0];
-                    setSelectedSchoolId(firstSchool.id);
+                    if (firstSchool) setSelectedSchoolId(firstSchool.id);
                   }
                 }}
-                className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
+                className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left relative ${
                   postScope === 'campus'
                     ? 'bg-[#2A4228] text-white border-[#2A4228] shadow-xs'
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
                 <GraduationCap className="w-5 h-5 shrink-0" />
-                <div>
-                  <div className="font-bold">🏫 Nội Bộ Trường</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold flex items-center justify-between gap-1">
+                    <span>🏫 Nội Bộ Trường</span>
+                    {!isUserLoggedIn && (
+                      <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${postScope === 'campus' ? 'bg-white/20 text-white' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
+                        🔒 Đăng nhập
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[9px] opacity-80 font-normal leading-tight">Chỉ học sinh trường này</div>
                 </div>
               </button>
@@ -787,34 +836,100 @@ export const ComposerModal: React.FC<ComposerModalProps> = ({
                   setPostingMode('anonymous');
                   if (selectedSchoolId === 'all-schools' || selectedSchoolId === 'all') {
                     const firstSchool = schools.find(s => s.id !== 'all-schools' && s.id !== 'all') || schools[0];
-                    setSelectedSchoolId(firstSchool.id);
+                    if (firstSchool) setSelectedSchoolId(firstSchool.id);
                   }
                 }}
-                className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left ${
+                className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border transition-all text-left relative ${
                   postScope === 'counseling_mailbox'
                     ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
                     : 'bg-[#FAF9F6] dark:bg-[#20281F] border-[#E5E2D9] dark:border-[#3A4738] text-[#7E7A71] dark:text-[#8E9B8A]'
                 }`}
               >
                 <HeartHandshake className="w-5 h-5 text-emerald-400 shrink-0" />
-                <div>
-                  <div className="font-bold flex items-center gap-1">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold flex items-center justify-between gap-1">
                     <span>🔒 Hòm Thư Tư Vấn</span>
+                    {!isUserLoggedIn && (
+                      <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${postScope === 'counseling_mailbox' ? 'bg-white/20 text-white' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
+                        🔒 Đăng nhập
+                      </span>
+                    )}
                   </div>
                   <div className="text-[9px] opacity-80 font-normal leading-tight">Chuyên gia Tâm lý</div>
                 </div>
               </button>
             </div>
 
-            {postScope === 'counseling_mailbox' && (
-              <div className="mt-2 p-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-1 animate-fade-in">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 text-[11px]">
-                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Hòm Thư Tư Vấn Tâm Lý Trường (Bảo Mật 100% Ẩn Danh)</span>
+            {/* Not Logged In Warning for Campus Scope */}
+            {postScope === 'campus' && !isUserLoggedIn && (
+              <div className="mt-2.5 p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/25 border border-amber-500/30 text-xs space-y-2 animate-fade-in text-amber-900 dark:text-amber-200">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-[11px]">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Cần đăng nhập để gửi thư vào Nội Bộ Trường</span>
                 </div>
-                <p className="text-[11px] text-[#2C382A] dark:text-[#A4B5A0] leading-relaxed">
-                  Giải tỏa những áp lực gia đình, bế tắc điểm số hoặc sợ bị dán nhãn tại trường. Bạn luôn xuất hiện dưới dạng <strong>Mã số ẩn danh #{anonNumber}</strong>. Chỉ Chuyên Gia Tâm Lý và Ban Cố Vấn của trường mới có quyền xem và phản hồi để bảo đảm chất lượng tham vấn & tính an toàn tuyệt đối.
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  Để đảm bảo an toàn & không gian riêng tư cho học sinh của trường, bạn cần đăng nhập tài khoản trước khi gửi thư vào bảng tin nội bộ.
                 </p>
+                <div className="flex items-center gap-2 pt-1">
+                  {onOpenLogin && (
+                    <button
+                      type="button"
+                      onClick={onOpenLogin}
+                      className="px-3 py-1.5 rounded-xl bg-[#2A4228] text-white text-[11px] font-bold hover:bg-[#1E301D] transition-colors flex items-center gap-1.5 shadow-xs"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>Đăng nhập bằng Google ngay</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPostScope('public')}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#20281F] border border-amber-500/40 text-amber-900 dark:text-amber-200 text-[11px] font-bold hover:bg-amber-500/10 transition-colors"
+                  >
+                    Chuyển sang 🌐 Sảnh Chung
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Counseling Mailbox Info / Notice */}
+            {postScope === 'counseling_mailbox' && (
+              <div className={`mt-2.5 p-3.5 rounded-2xl border text-xs space-y-2 animate-fade-in ${
+                !isUserLoggedIn 
+                  ? 'bg-amber-500/10 dark:bg-amber-950/25 border-amber-500/30 text-amber-900 dark:text-amber-200' 
+                  : 'bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-500/30 text-emerald-950 dark:text-emerald-200'
+              }`}>
+                <div className={`flex items-center gap-1.5 font-bold text-[11px] ${!isUserLoggedIn ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
+                  <Lock className={`w-4 h-4 ${!isUserLoggedIn ? 'text-amber-600' : 'text-emerald-600'} shrink-0`} />
+                  <span>
+                    {!isUserLoggedIn 
+                      ? 'Cần đăng nhập để nhận phản hồi từ Chuyên gia Tâm lý' 
+                      : 'Hòm Thư Tư Vấn Tâm Lý Trường (Bảo Mật 100% Ẩn Danh)'}
+                  </span>
+                </div>
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  {!isUserLoggedIn ? (
+                    <>
+                      Để Chuyên Gia Tâm Lý học đường có thể gửi phản hồi riêng tư bảo mật và đồng bộ vào hộp thư của bạn, hệ thống yêu cầu đăng nhập tài khoản. <strong>Danh tính của bạn vẫn được bảo vệ hoàn toàn ẩn danh</strong> với mã số <strong>#{anonNumber}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Giải tỏa những áp lực gia đình, bế tắc điểm số hoặc sợ bị dán nhãn tại trường. Bạn luôn xuất hiện dưới dạng <strong>Mã số ẩn danh #{anonNumber}</strong>. Chỉ Chuyên Gia Tâm Lý và Ban Cố Vấn của trường mới có quyền xem và phản hồi để bảo đảm chất lượng tham vấn & tính an toàn tuyệt đối.
+                    </>
+                  )}
+                </p>
+                {!isUserLoggedIn && onOpenLogin && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={onOpenLogin}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#2A4228] text-white text-[11px] font-bold hover:bg-[#1E301D] transition-colors flex items-center gap-1.5 shadow-xs"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>Đăng nhập bằng Google để gửi thư tư vấn</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

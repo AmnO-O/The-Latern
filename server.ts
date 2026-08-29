@@ -142,7 +142,7 @@ Trả về kết quả duy nhất ở định dạng JSON chuẩn (không dùng 
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -201,7 +201,7 @@ Yêu cầu:
 - Không dùng từ ngữ sáo rỗng. Viết bằng tiếng Việt tự nhiên, êm dịu.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           temperature: 0.7
@@ -238,7 +238,7 @@ Nhiệm vụ của bạn trong cuộc trò chuyện 1-1 này:
 - Tuyệt đối không dùng văn mẫu khô cứng hay sáo rỗng.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           temperature: 0.7
@@ -280,7 +280,7 @@ Hãy viết câu trả lời (1-3 câu ngắn gọn, chân thành, tự nhiên) 
 - Giọng văn chân thực của học sinh/sinh viên nhận được sự an ủi.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           temperature: 0.7
@@ -313,7 +313,7 @@ Hãy viết câu trả lời (1-3 câu ngắn gọn, chân thành, tự nhiên) 
         : `Bạn là "${peerName || 'Bạn Lắng Nghe'}" - một bạn học sinh/sinh viên tích cực, đã qua tập huấn lắng nghe không phán xét. Hãy phản hồi câu: "${message}". Lịch sử: ${JSON.stringify(chatHistory || [])}. Giọng văn gần gũi, thấu cảm, khích lệ nhẹ nhàng, 2-3 câu.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           temperature: 0.7
@@ -371,7 +371,7 @@ Trả về duy nhất JSON có cấu trúc (không dùng markdown backticks):
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.1-flash-lite",
         contents: [
           {
             role: "user",
@@ -503,7 +503,7 @@ Quy tắc phân loại:
 Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown backticks hay văn bản thừa).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         contents: [
           {
             role: "user",
@@ -543,25 +543,13 @@ Trả về DUY NHẤT JSON có cấu trúc như trên (không dùng markdown bac
 
       return res.json(parsed);
     } catch (err: any) {
-      console.warn("Student ID Verification Info: Gemini Vision call failed or timed out, returning verification check:", err?.message);
-      // If client provided a fallback school, do a graceful fallback verification
-      if (fallbackSchoolName) {
-        return res.json({
-          isValidStudentId: true,
-          confidenceScore: 0.85,
-          detectedDocumentType: "Thẻ Học sinh/Sinh viên",
-          extractedSchool: fallbackSchoolName,
-          schoolType: "university",
-          location: "Việt Nam",
-          verificationStatus: "verified",
-          reason: `AI đã xử lý thẻ và xác thực thành công cho ${fallbackSchoolName}.`
-        });
-      }
-      return res.status(500).json({
+      console.warn("Student ID Verification Info: Gemini Vision call failed or timed out:", err?.message);
+      // Graceful fallback response if image was uploaded
+      return res.json({
         isValidStudentId: false,
         confidenceScore: 0,
         verificationStatus: "rejected",
-        reason: "Không thể xử lý hình ảnh thẻ lúc này. Vui lòng thử lại với ảnh rõ nét hơn hoặc dùng phương thức xác thực qua Email Trường."
+        reason: "Không thể nhận diện rõ thông tin trên thẻ (ảnh bị mờ, lóa sáng hoặc góc chụp nghiêng). Vui lòng thử lại với ảnh rõ nét hơn hoặc dùng phương thức xác thực nhanh qua Email Trường."
       });
     }
   });
