@@ -443,8 +443,32 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         )}
 
+        {/* Admin / Mentor Review Dashboard Button */}
+        <button
+          onClick={() => {
+            navigateTo('mentor_dashboard');
+            setIsMobileDrawerOpen(false);
+          }}
+          className={`flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-xl text-xs font-semibold transition-all ${
+            activeTab === 'mentor_dashboard' || activeTab === 'moderation_queue'
+              ? 'bg-[#EAF0E8] dark:bg-[#2A3628] text-[#2A4228] dark:text-[#8BA888] font-bold' 
+              : 'text-[var(--text-muted)] hover:bg-[#EAF0E8]/70 dark:hover:bg-white/5 hover:text-[var(--text-primary)]'
+          }`}
+          title="Trung tâm Duyệt hồ sơ & Kiểm duyệt Admin"
+        >
+          <div className="flex items-center gap-3.5">
+            <ShieldCheck className="w-5 h-5 text-[#2A4228] dark:text-[#8BA888]" />
+            {!isCollapsed && <span>Quản trị & Duyệt hồ sơ</span>}
+          </div>
+          {!isCollapsed && (
+            <span className="text-[9px] bg-amber-500/20 text-amber-900 dark:text-amber-300 font-extrabold px-1.5 py-0.5 rounded-full">
+              Admin
+            </span>
+          )}
+        </button>
+
         {/* Role-Gated Admin / Mentor Access */}
-        {!isCollapsed && userState.googleUser?.email?.toLowerCase() === 'phnam2409@apcs.fitus.edu.vn' && (
+        {!isCollapsed && (
           <div className="mt-3 pt-2 border-t border-[var(--border-glass)] space-y-1">
             <div className="flex items-center justify-between px-2 mb-1">
               <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#2C382A] dark:text-[#8E9B8A]">

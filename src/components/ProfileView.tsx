@@ -608,7 +608,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {isLoggedInWithGmail && userState.isPeerMentor ? (
+        {userState.isPeerMentor || userState.peerMentorApplication?.status === 'approved' ? (
           <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 text-xs space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300">
               <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -624,17 +624,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </p>
             )}
           </div>
-        ) : isLoggedInWithGmail && userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
+        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'pending' ? (
           <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 text-xs space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300">
               <Clock className="w-4 h-4 text-amber-600" />
               <span>Hồ sơ đang chờ Admin duyệt</span>
             </div>
             <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed text-[11px]">
-              Đơn đăng ký <strong>{userState.peerMentorApplication.roleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</strong> của bạn đang được xem xét. Bạn sẽ nhận được thông báo ngay khi hồ sơ được duyệt.
+              Đơn đăng ký <strong>{userState.peerMentorApplication.roleType === 'specialist' ? 'Chuyên gia tâm lý' : 'Người lắng nghe'}</strong> của bạn đang được xem xét tại Trung tâm Quản trị. Bạn sẽ nhận được thông báo ngay khi hồ sơ được duyệt.
             </p>
           </div>
-        ) : isLoggedInWithGmail && userState.peerMentorApplication && userState.peerMentorApplication.status === 'rejected' ? (
+        ) : userState.peerMentorApplication && userState.peerMentorApplication.status === 'rejected' ? (
           <div className="p-3.5 rounded-2xl bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 text-xs space-y-2">
             <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300">
               <X className="w-4 h-4 text-rose-600" />

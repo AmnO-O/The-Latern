@@ -21,6 +21,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { School, UserState, PeerMentorApplication } from '../types';
+import { compressImage } from '../lib/imageUtils';
 
 interface EthicsQuestionPrompt {
   id: string;
@@ -132,38 +133,51 @@ export const PeerMentorModal: React.FC<PeerMentorModalProps> = ({
     );
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Vui lòng chọn ảnh dung lượng dưới 5MB');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Vui lòng chọn ảnh dung lượng dưới 10MB');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setCertificateImage(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 900, 0.75);
+        setCertificateImage(compressed);
+      } catch (err) {
+        console.warn('Compress image error, using direct reader:', err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setCertificateImage(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
   const selectedSchoolObj = schools.find(s => s.id === selectedSchoolId) || schools[0];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeTerms) return;
 
     setIsSubmitting(true);
+
+    const displayName = (
+      userState.verifiedFullName || 
+      userState.displayName || 
+      userState.googleUser?.displayName || 
+      `Thành viên #${userState.userAnonNumber}`
+    ).trim();
 
     // Both roles go through admin review queue with open-ended ethics thought
     const application: PeerMentorApplication = {
       id: currentApp?.id || `app-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       applicantId: userState.googleUser?.uid || `anon-${userState.userAnonNumber}`,
       applicantAnonId: `#${userState.userAnonNumber}`,
-      applicantDisplayName: userState.displayName || `Thành viên #${userState.userAnonNumber}`,
-      applicantEmail: userState.googleUser?.email,
+      applicantDisplayName: displayName,
+      applicantEmail: userState.googleUser?.email || '',
       roleType,
       schoolId: selectedSchoolId,
       schoolName: selectedSchoolObj?.name || 'Trường học',
@@ -180,29 +194,31 @@ export const PeerMentorModal: React.FC<PeerMentorModalProps> = ({
       ethicsAnswer: ethicsAnswer.trim() || undefined
     };
 
-    setTimeout(() => {
-      setUserState(prev => {
-        const existingVerified = prev.verifiedSchools || [];
-        const hasSchool = existingVerified.some(s => s.id === selectedSchoolId);
-        const updatedVerified = (hasSchool || !selectedSchoolObj) ? existingVerified : [...existingVerified, selectedSchoolObj];
+    setUserState(prev => {
+      const existingVerified = prev.verifiedSchools || [];
+      const hasSchool = existingVerified.some(s => s.id === selectedSchoolId);
+      const updatedVerified = (hasSchool || !selectedSchoolObj) ? existingVerified : [...existingVerified, selectedSchoolObj];
 
-        return {
-          ...prev,
-          verifiedSchools: updatedVerified,
-          peerMentorApplication: application,
-          isPeerMentor: prev.isPeerMentor,
-          mentorRoleType: prev.mentorRoleType
-        };
-      });
+      return {
+        ...prev,
+        verifiedSchools: updatedVerified,
+        peerMentorApplication: application,
+        isPeerMentor: prev.isPeerMentor,
+        mentorRoleType: prev.mentorRoleType
+      };
+    });
 
-      if (onSaveApplication) {
-        onSaveApplication(application);
+    if (onSaveApplication) {
+      try {
+        await Promise.resolve(onSaveApplication(application));
+      } catch (err) {
+        console.error('Error saving application:', err);
       }
+    }
 
-      setIsSubmitting(false);
-      setSubmittedSuccess(true);
-      if (onSuccess) onSuccess();
-    }, 400);
+    setIsSubmitting(false);
+    setSubmittedSuccess(true);
+    if (onSuccess) onSuccess();
   };
 
   return (

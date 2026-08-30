@@ -567,12 +567,19 @@ export default function App() {
 
     // If current user is the applicant, update role in userState
     setUserState(prev => {
-      if (prev.peerMentorApplication?.id === appId || (!prev.peerMentorApplication && prev.userRole !== 'admin_moderator')) {
-        const updatedApp = {
-          ...(prev.peerMentorApplication || {}),
+      const isCurrentApplicant = 
+        prev.peerMentorApplication?.id === appId || 
+        (targetApp?.applicantId && prev.googleUser?.uid && targetApp.applicantId === prev.googleUser.uid) ||
+        (targetApp?.applicantEmail && prev.googleUser?.email && targetApp.applicantEmail.toLowerCase() === prev.googleUser.email.toLowerCase()) ||
+        (targetApp?.applicantAnonId === `#${prev.userAnonNumber}`);
+
+      if (isCurrentApplicant) {
+        const updatedApp: PeerMentorApplication = {
+          ...(targetApp || prev.peerMentorApplication || {}),
           id: appId,
-          status: 'approved' as const,
-          roleType: role
+          status: 'approved',
+          roleType: role,
+          reviewedAt: Date.now()
         } as PeerMentorApplication;
 
         const matchingApp = targetApp || prev.peerMentorApplication;
@@ -582,15 +589,21 @@ export default function App() {
           ? [...existingVerified, schoolObj]
           : existingVerified;
 
-        return {
+        const updatedState = {
           ...prev,
           verifiedSchools: updatedVerified,
           peerMentorApplication: updatedApp,
           isPeerMentor: true,
           isSpecialist: role === 'specialist',
           mentorRoleType: role,
-          userRole: role === 'specialist' ? 'mentor' : 'peer_listener'
+          userRole: role === 'specialist' ? ('mentor' as const) : ('peer_listener' as const)
         };
+
+        try {
+          localStorage.setItem('lantern_user_state', JSON.stringify(updatedState));
+        } catch (e) {}
+
+        return updatedState;
       }
       return prev;
     });
@@ -620,6 +633,8 @@ export default function App() {
   };
 
   const handleRejectMentorApplication = async (appId: string, reason?: string) => {
+    const targetApp = mentorApplications.find(a => a.id === appId);
+
     setMentorApplications(prev => prev.map(a => {
       if (a.id === appId) {
         return {
@@ -634,15 +649,25 @@ export default function App() {
 
     // If current user is the applicant
     setUserState(prev => {
-      if (prev.peerMentorApplication?.id === appId) {
-        return {
+      const isCurrentApplicant = 
+        prev.peerMentorApplication?.id === appId || 
+        (targetApp?.applicantId && prev.googleUser?.uid && targetApp.applicantId === prev.googleUser.uid) ||
+        (targetApp?.applicantEmail && prev.googleUser?.email && targetApp.applicantEmail.toLowerCase() === prev.googleUser.email.toLowerCase()) ||
+        (targetApp?.applicantAnonId === `#${prev.userAnonNumber}`);
+
+      if (isCurrentApplicant && prev.peerMentorApplication) {
+        const updatedState = {
           ...prev,
           peerMentorApplication: {
             ...prev.peerMentorApplication,
-            status: 'rejected',
+            status: 'rejected' as const,
             rejectionReason: reason
           }
         };
+        try {
+          localStorage.setItem('lantern_user_state', JSON.stringify(updatedState));
+        } catch (e) {}
+        return updatedState;
       }
       return prev;
     });
@@ -1080,6 +1105,43 @@ export default function App() {
     const unsubscribeMentorApps = listenToMentorApplicationsFromFirestore((updatedApps) => {
       if (updatedApps && updatedApps.length > 0) {
         setMentorApplications(updatedApps);
+
+        // Realtime sync current user's application status if updated by admin
+        setUserState(prev => {
+          const myApp = updatedApps.find(a => 
+            (prev.peerMentorApplication?.id && a.id === prev.peerMentorApplication.id) ||
+            (prev.googleUser?.uid && a.applicantId === prev.googleUser.uid) ||
+            (prev.googleUser?.email && a.applicantEmail && a.applicantEmail.toLowerCase() === prev.googleUser.email.toLowerCase()) ||
+            (a.applicantAnonId === `#${prev.userAnonNumber}`)
+          );
+
+          if (!myApp) return prev;
+
+          const isApproved = myApp.status === 'approved';
+          const isSpec = myApp.roleType === 'specialist';
+
+          if (
+            prev.peerMentorApplication?.status !== myApp.status ||
+            prev.isPeerMentor !== isApproved ||
+            prev.isSpecialist !== (isApproved && isSpec) ||
+            prev.mentorRoleType !== myApp.roleType
+          ) {
+            const updated = {
+              ...prev,
+              peerMentorApplication: myApp,
+              isPeerMentor: isApproved,
+              isSpecialist: isApproved && isSpec,
+              mentorRoleType: isApproved ? myApp.roleType : prev.mentorRoleType,
+              userRole: isApproved ? (isSpec ? ('mentor' as const) : ('peer_listener' as const)) : prev.userRole
+            };
+            try {
+              localStorage.setItem('lantern_user_state', JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          }
+
+          return prev;
+        });
       }
     });
 

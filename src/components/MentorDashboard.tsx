@@ -478,10 +478,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   {/* Actions Footer */}
                   <div className="pt-2.5 border-t border-[#F0EFEB] dark:border-[#2C382A] flex items-center justify-between flex-wrap gap-2">
                     <span className="text-[10px] text-[#8E9B8A]">
-                      Mã: <code className="text-[#3A4036] dark:text-[#E8ECE6]">{app.id}</code>
+                      Mã đơn: <code className="text-[#3A4036] dark:text-[#E8ECE6]">{app.id}</code>
+                      {app.applicantEmail && <span className="ml-2">({app.applicantEmail})</span>}
                     </span>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {isPending ? (
                         <>
                           <button
@@ -500,30 +501,56 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                             type="button"
                             onClick={() => {
                               if (onApproveApplication) {
-                                onApproveApplication(app.id, app.roleType);
+                                onApproveApplication(app.id, 'peer_listener');
                               }
                             }}
-                            className="px-4 py-1.5 rounded-full bg-[#2A4228] hover:bg-[#1B2C1A] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                            className="px-3 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                            title="Duyệt cấp quyền Bạn lắng nghe cho ứng viên"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Duyệt làm {app.roleType === 'specialist' ? 'Chuyên gia' : 'Người lắng nghe'}</span>
+                            <span>Duyệt làm Người lắng nghe</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onApproveApplication) {
+                                onApproveApplication(app.id, 'specialist');
+                              }
+                            }}
+                            className="px-3.5 py-1.5 rounded-full bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                            title="Duyệt cấp quyền Chuyên gia tâm lý cho ứng viên"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            <span>Duyệt làm Chuyên gia</span>
                           </button>
                         </>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A]">
-                            Đã xử lý hồ sơ
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] text-[#5A6D58] dark:text-[#8E9B8A] font-medium">
+                            {isApproved ? `✓ Đã duyệt (${app.roleType === 'specialist' ? 'Chuyên gia' : 'Người lắng nghe'})` : '✕ Đã từ chối'}
                           </span>
                           <button
                             type="button"
                             onClick={() => {
                               if (onApproveApplication) {
-                                onApproveApplication(app.id, app.roleType);
+                                onApproveApplication(app.id, 'peer_listener');
                               }
                             }}
-                            className="text-[10px] text-[#2A4228] dark:text-[#8BA888] underline font-bold"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold hover:bg-emerald-200"
                           >
-                            Duyệt lại
+                            Duyệt Bạn lắng nghe
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onApproveApplication) {
+                                onApproveApplication(app.id, 'specialist');
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 text-[11px] font-bold hover:bg-sky-200"
+                          >
+                            Duyệt Chuyên gia
                           </button>
                           <button
                             type="button"
@@ -531,9 +558,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                               setRejectingAppId(app.id);
                               setCustomRejectReason('');
                             }}
-                            className="text-[10px] text-rose-600 underline font-bold"
+                            className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[11px] font-bold hover:bg-rose-200"
                           >
-                            Từ chối lại
+                            Từ chối
                           </button>
                         </div>
                       )}
