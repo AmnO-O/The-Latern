@@ -14,7 +14,7 @@ import {
   CounselingAppointment,
   AppointmentStatus
 } from './types';
-import { PUBLIC_GLOBAL_SCHOOL, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
+import { PUBLIC_GLOBAL_SCHOOL, INITIAL_SCHOOLS, INITIAL_POSTS, INITIAL_THREADS } from './data/mockData';
 import { Navbar } from './components/Navbar';
 import { MobileBottomBar } from './components/MobileBottomBar';
 import { LandingPage } from './components/LandingPage';
@@ -95,7 +95,18 @@ export default function App() {
     return 'landing';
   });
 
-  const [schools, setSchools] = useState<School[]>([]);
+  const [schools, setSchools] = useState<School[]>(() => {
+    try {
+      const cached = localStorage.getItem('lantern_schools_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached schools:', e);
+    }
+    return INITIAL_SCHOOLS;
+  });
   const [selectedSchool, setSelectedSchool] = useState<School>(() => {
     try {
       const saved = localStorage.getItem('lantern_selected_school');
@@ -108,6 +119,17 @@ export default function App() {
     }
     return PUBLIC_GLOBAL_SCHOOL;
   });
+
+  // Persist schools to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (schools && schools.length > 0) {
+        localStorage.setItem('lantern_schools_cache', JSON.stringify(schools));
+      }
+    } catch (e) {
+      console.warn('Failed to save schools to localStorage:', e);
+    }
+  }, [schools]);
 
   // Persist activeTab to localStorage and handle special tab redirects
   useEffect(() => {
@@ -1066,6 +1088,7 @@ export default function App() {
       await updateSchoolInFirestore(schoolId, updatedFields);
     } catch (err) {
       console.error('Failed to sync school update to Firestore:', err);
+      throw err;
     }
   };
 
@@ -1082,6 +1105,7 @@ export default function App() {
       await deleteSchoolFromFirestore(schoolId);
     } catch (err) {
       console.error('Failed to delete school from Firestore:', err);
+      throw err;
     }
   };
 
@@ -1091,6 +1115,7 @@ export default function App() {
       await seedDefaultSchoolsToFirestore(true);
     } catch (err) {
       console.error('Failed to seed default schools to Firestore:', err);
+      throw err;
     }
   };
 
@@ -1548,15 +1573,17 @@ export default function App() {
 
   // Update Post (Title, Content, Tags, isPublic)
   const handleUpdatePost = async (postId: string, updateData: { title: string; content: string; tags: string[]; isPublic: boolean }) => {
+    let updatedTarget: Post | null = null;
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
-        return {
+        updatedTarget = {
           ...p,
           title: updateData.title,
           content: updateData.content,
           tags: updateData.tags,
           isPublic: updateData.isPublic
         };
+        return updatedTarget;
       }
       return p;
     }));
@@ -1571,10 +1598,20 @@ export default function App() {
       } : null);
     }
 
-    // Sync to Firestore
-    updatePostInFirestore(postId, updateData).catch(err => {
+    // Sync to Firestore with full post object fallback
+    const targetToSync = updatedTarget || posts.find(p => p.id === postId);
+    try {
+      if (targetToSync) {
+        await updatePostInFirestore(postId, {
+          ...targetToSync,
+          ...updateData
+        });
+      } else {
+        await updatePostInFirestore(postId, updateData);
+      }
+    } catch (err) {
       console.warn('Firestore update post error:', err);
-    });
+    }
   };
 
   // Delete Post
@@ -2237,14 +2274,14 @@ export default function App() {
             onSharePost={(post) => setSharingPost(post)}
             onEditPost={(post, e) => {
               if (e) e.stopPropagation();
-              if (isUserAuthor(post)) {
+              if (isAdmin || isUserAuthor(post)) {
                 setEditingPost(post);
               }
             }}
             onDeletePost={(postId, e) => {
               if (e) e.stopPropagation();
               const target = posts.find(p => p.id === postId);
-              if (target && isUserAuthor(target)) {
+              if (target && (isAdmin || isUserAuthor(target))) {
                 handleDeletePost(postId, e);
               }
             }}
@@ -2291,8 +2328,8 @@ export default function App() {
             onSharePost={(post) => setSharingPost(post)}
             onAddReply={handleAddReply}
             onRequestAIReply={handleRequestAIReply}
-            onEditPost={isUserAuthor(selectedPost) ? (post) => setEditingPost(post) : undefined}
-            onDeletePost={isUserAuthor(selectedPost) ? (postId) => handleDeletePost(postId) : undefined}
+            onEditPost={(isAdmin || isUserAuthor(selectedPost)) ? (post) => setEditingPost(post) : undefined}
+            onDeletePost={(isAdmin || isUserAuthor(selectedPost)) ? (postId) => handleDeletePost(postId) : undefined}
             onOpenAmbientModal={() => setIsAmbientModalOpen(true)}
             onOpenProfile={() => setActiveTab('profile')}
             onOpenLogin={handleGoogleSignIn}

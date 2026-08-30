@@ -832,7 +832,7 @@ export const Campus2DMapView: React.FC<Campus2DMapViewProps> = ({
           flex-direction: column;
           align-items: center;
           cursor: pointer;
-          transform: translate(-50%, -50%);
+          transform: translate(-50%, 0);
           pointer-events: auto;
           user-select: none;
         ">

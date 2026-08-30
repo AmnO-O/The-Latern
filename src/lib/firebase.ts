@@ -11,6 +11,8 @@ import {
 import { 
   initializeFirestore,
   getFirestore, 
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection, 
   doc, 
   getDoc, 
@@ -44,15 +46,24 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Firestore with forced long polling to prevent WebSocket connection timeout errors in iframe environments
+// Initialize Firestore with persistent IndexedDB offline cache & long polling for iframe resilience
 const dbId = firebaseConfigData.firestoreDatabaseId || '(default)';
 export const db = (() => {
   try {
     return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
       experimentalForceLongPolling: true,
     }, dbId);
   } catch (e) {
-    return getFirestore(app, dbId);
+    try {
+      return initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+      }, dbId);
+    } catch (e2) {
+      return getFirestore(app, dbId);
+    }
   }
 })();
 
@@ -563,16 +574,14 @@ export const toggleHugPostInFirestore = async (postId: string, isHugged: boolean
   }
 };
 
-export const updatePostInFirestore = async (postId: string, updateData: { title: string; content: string; tags: string[]; isPublic?: boolean }) => {
+export const updatePostInFirestore = async (postId: string, updateData: Partial<Post>) => {
   try {
     const postRef = doc(db, 'posts', postId);
-    await setDoc(postRef, {
-      title: updateData.title,
-      content: updateData.content,
-      tags: updateData.tags,
-      isPublic: updateData.isPublic ?? false,
+    await setDoc(postRef, sanitizeForFirestore({
+      ...updateData,
+      id: postId,
       updatedAt: Date.now()
-    }, { merge: true });
+    }), { merge: true });
   } catch (err) {
     console.error('Update post error:', err);
     throw err;
@@ -676,6 +685,17 @@ export const DEFAULT_SEEDED_SCHOOLS: School[] = [
     logoUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=160&auto=format&fit=crop&q=80'
   },
   {
+    id: 'school-dh-khtn-hn',
+    name: 'Đại học Khoa học Tự nhiên - ĐHQGHN (HUS)',
+    slug: 'dh-khoa-hoc-tu-nhien-ha-noi',
+    type: 'university',
+    letterCount: 16,
+    newCount: 3,
+    verifiedCount: 58,
+    location: 'Hà Nội',
+    logoUrl: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=160&auto=format&fit=crop&q=80'
+  },
+  {
     id: 'school-dh-kinh-te-quoc-dan',
     name: 'Đại học Kinh tế Quốc dân (NEU)',
     slug: 'dh-kinh-te-quoc-dan-neu',
@@ -740,7 +760,8 @@ export const seedDefaultSchoolsToFirestore = async (forceOverwrite = false) => {
 export const deleteSchoolFromFirestore = async (schoolId: string) => {
   try {
     const schoolRef = doc(db, 'schools', schoolId);
-    await deleteDoc(schoolRef);
+    await setDoc(schoolRef, { isDeleted: true, updatedAt: Date.now() }, { merge: true });
+    await deleteDoc(schoolRef).catch(() => {});
   } catch (err) {
     console.error('Delete school error:', err);
     throw err;
@@ -751,7 +772,9 @@ export const updateSchoolInFirestore = async (schoolId: string, updatedFields: P
   try {
     const schoolRef = doc(db, 'schools', schoolId);
     await setDoc(schoolRef, sanitizeForFirestore({
+      id: schoolId,
       ...updatedFields,
+      logoUrl: updatedFields.logoUrl !== undefined ? updatedFields.logoUrl : '',
       updatedAt: Date.now()
     }), { merge: true });
   } catch (err) {
@@ -764,20 +787,45 @@ export const listenToSchoolsFromFirestore = (callback: (schools: School[]) => vo
   const schoolsRef = collection(db, 'schools');
   return onSnapshot(schoolsRef, (snapshot) => {
     if (!snapshot.empty) {
-      const dbSchools: School[] = [];
-      snapshot.forEach(docSnap => {
-        dbSchools.push({
-          id: docSnap.id,
-          ...(docSnap.data() as any)
-        });
+      const dbSchoolsMap = new Map<string, School>();
+
+      // Base default seeded schools
+      DEFAULT_SEEDED_SCHOOLS.forEach(s => {
+        dbSchoolsMap.set(s.id, { ...s });
       });
-      callback(dbSchools);
+
+      // Override with real documents from Firestore
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data() as any;
+        if (data.isDeleted) {
+          dbSchoolsMap.delete(docSnap.id);
+          return;
+        }
+
+        const existingDefault = dbSchoolsMap.get(docSnap.id);
+        const resolvedSchool: School = {
+          id: docSnap.id,
+          name: data.name || existingDefault?.name || '',
+          slug: data.slug || existingDefault?.slug || docSnap.id,
+          type: data.type || existingDefault?.type || 'university',
+          letterCount: typeof data.letterCount === 'number' ? data.letterCount : (existingDefault?.letterCount || 0),
+          newCount: typeof data.newCount === 'number' ? data.newCount : (existingDefault?.newCount || 0),
+          verifiedCount: typeof data.verifiedCount === 'number' ? data.verifiedCount : (existingDefault?.verifiedCount || 0),
+          location: data.location || existingDefault?.location || 'Việt Nam',
+          logoUrl: data.logoUrl !== undefined ? (data.logoUrl || undefined) : existingDefault?.logoUrl
+        };
+
+        dbSchoolsMap.set(docSnap.id, resolvedSchool);
+      });
+
+      const finalSchools = Array.from(dbSchoolsMap.values());
+      callback(finalSchools);
     } else {
-      // If collection is completely empty, automatically seed initial universities & high schools directly into Firestore
+      // If collection is completely empty, seed initial universities & high schools directly into Firestore
       seedDefaultSchoolsToFirestore(false).then(() => {
         callback(DEFAULT_SEEDED_SCHOOLS);
       }).catch(() => {
-        callback([]);
+        callback(DEFAULT_SEEDED_SCHOOLS);
       });
     }
   }, (err) => {

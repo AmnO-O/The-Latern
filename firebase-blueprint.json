@@ -1,5 +1,20 @@
 {
   "entities": {
+    "schools": {
+      "title": "Schools and Campuses",
+      "description": "Information about high schools and universities",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "shortName": { "type": "string" },
+        "type": { "type": "string" },
+        "region": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "name"]
+    },
     "posts": {
       "title": "Letters & Posts",
       "description": "Anonymous letters sent to campus mailboxes or public feed",

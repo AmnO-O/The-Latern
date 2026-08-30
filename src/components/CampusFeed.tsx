@@ -680,8 +680,8 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
                   onToggleHug={onToggleHug}
                   onToggleSave={onToggleSave}
                   onSharePost={onSharePost}
-                  onEditPost={isAuthor ? onEditPost : undefined}
-                  onDeletePost={isAuthor ? onDeletePost : undefined}
+                  onEditPost={(isAdmin || isAuthor) ? onEditPost : undefined}
+                  onDeletePost={(isAdmin || isAuthor) ? onDeletePost : undefined}
                   onConnectWithAuthor={onConnectWithAuthor ? (p, e) => onConnectWithAuthor(p) : undefined}
                   onViewPublicProfile={onViewPublicProfile}
                   isAuthor={isAuthor}
