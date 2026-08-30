@@ -151,8 +151,8 @@ export const CampusFeed: React.FC<CampusFeedProps> = ({
 
   // Base posts selection based on selected school or global view
   const basePosts = isGlobalView
-    ? posts.filter(p => p.isPublic === true)
-    : posts.filter(p => school && (p.schoolId === school.id || p.schoolSlug === school.slug));
+    ? posts.filter(p => p.isPublic === true || p.schoolId === 'all-schools' || p.schoolId === 'all' || p.schoolSlug === 'sanh-chung-public')
+    : posts.filter(p => school && (p.schoolId === school.id || p.schoolSlug === school.slug || (p.schoolName && p.schoolName.toLowerCase().trim() === school.name.toLowerCase().trim())));
 
   // Filter by scope (inside specific school hub)
   const scopeFilteredPosts = basePosts.filter(p => {

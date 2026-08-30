@@ -54,6 +54,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Peer Mentor & Specialist Applications Collection
+    match /mentor_applications/{applicationId} {
+      allow read, write: if true;
+    }
+
+    // Listener Reports Collection
+    match /listener_reports/{reportId} {
+      allow read, write: if true;
+    }
+
     // Healing Notes & Feedback Wall Collection
     match /healing_notes/{noteId} {
       allow read: if true;

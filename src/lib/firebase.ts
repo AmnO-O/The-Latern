@@ -31,7 +31,7 @@ import {
   increment
 } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
-import { Post, Reply, UserState, School, CounselingAppointment, AppointmentStatus, HealingNote } from '../types';
+import { Post, Reply, UserState, School, CounselingAppointment, AppointmentStatus, HealingNote, PeerMentorApplication, ListenerReport } from '../types';
 import { INITIAL_SCHOOLS } from '../data/mockData';
 
 // Initialize Firebase
@@ -336,12 +336,10 @@ export const listenToPostsFromFirestore = (callback: (posts: Post[]) => void) =>
       posts.push(rawPost);
     });
 
-    // Robust deduplication pass
+    // Robust ID deduplication pass
     const dedupedMap = new Map<string, Post>();
-    const signatureMap = new Map<string, Post>();
 
     posts.forEach(p => {
-      // 1. By Exact ID
       if (dedupedMap.has(p.id)) {
         const existing = dedupedMap.get(p.id)!;
         const mergedRepliesMap = new Map<string, Reply>();
@@ -359,44 +357,7 @@ export const listenToPostsFromFirestore = (callback: (posts: Post[]) => void) =>
         return;
       }
 
-      // 2. By Semantic Signature (Title + Content + School + Author)
-      const sig = `${p.schoolId || 'global'}__${(p.title || '').trim()}__${(p.content || '').trim()}__${(p.authorAnonId || p.authorUid || '')}`;
-      if (signatureMap.has(sig)) {
-        const existing = signatureMap.get(sig)!;
-        const mergedRepliesMap = new Map<string, Reply>();
-        (existing.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
-        (p.replies || []).forEach(r => mergedRepliesMap.set(r.id, r));
-        const mergedReplies = Array.from(mergedRepliesMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-        
-        // Pick primary document (keep the one with newer createdAt or higher replies)
-        const primary = (p.repliesCount || 0) >= (existing.repliesCount || 0) ? p : existing;
-        const duplicate = primary.id === p.id ? existing : p;
-
-        const merged: Post = {
-          ...duplicate,
-          ...primary,
-          replies: mergedReplies,
-          repliesCount: Math.max(existing.repliesCount || 0, p.repliesCount || 0, mergedReplies.length),
-          hugsCount: Math.max(existing.hugsCount || 0, p.hugsCount || 0),
-          likesCount: Math.max(existing.likesCount || 0, p.likesCount || 0)
-        };
-
-        // Update map
-        dedupedMap.delete(duplicate.id);
-        dedupedMap.set(primary.id, merged);
-        signatureMap.set(sig, merged);
-
-        // Async clean up redundant duplicate document in Firestore
-        if (duplicate.id !== primary.id) {
-          try {
-            deleteDoc(doc(db, 'posts', duplicate.id)).catch(() => {});
-          } catch (_) {}
-        }
-        return;
-      }
-
       dedupedMap.set(p.id, p);
-      signatureMap.set(sig, p);
     });
 
     const finalPosts = Array.from(dedupedMap.values()).sort((a, b) => ((b.createdAt || 0) - (a.createdAt || 0)));
@@ -1320,6 +1281,184 @@ export const listenToHealingNotesFromFirestore = (
     console.warn('Listen to healing notes in Firestore error:', err);
   });
 };
+
+// ==========================================
+// PEER MENTOR & SPECIALIST APPLICATIONS
+// ==========================================
+
+export const INITIAL_DEFAULT_MENTOR_APPLICATIONS: PeerMentorApplication[] = [
+  {
+    id: 'app-spec-1',
+    applicantId: 'usr-spec-hnue',
+    applicantDisplayName: 'Nguyễn Hoàng Minh',
+    applicantEmail: 'minh.nh.psych@hnue.edu.vn',
+    roleType: 'specialist',
+    schoolId: 'hnue',
+    schoolName: 'Đại học Sư phạm Hà Nội',
+    isGlobalScope: true,
+    status: 'pending',
+    appliedAt: Date.now() - 3600000 * 5,
+    strengths: ['Áp lực học tập & Kỳ vọng gia đình', 'Khủng hoảng định hướng ngành nghề', 'Cô đơn & Trầm lắng cảm xúc'],
+    motivation: 'Tôi là Thạc sĩ Tâm lý học lâm sàng với 4 năm kinh nghiệm tham vấn học đường. Tôi mong muốn đồng hành và hỗ trợ giải tỏa áp lực tâm lý cho học sinh sinh viên.',
+    commitmentAccepted: true,
+    qualificationTitle: 'Thạc sĩ Tâm lý học Lâm sàng',
+    specialty: 'Tham vấn khủng hoảng & Rối loạn cảm xúc học đường',
+    certificateImageUrl: 'https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=600&q=80',
+    ethicsQuestion: 'Một bạn ẩn danh tâm sự đang chịu áp lực nặng nề và có suy nghĩ trốn tránh thực tại hoặc làm điều tiêu cực, nhưng nài nỉ bạn "xin hãy giữ bí mật tuyệt đối và đừng nói với bất kỳ ai, kể cả thầy cô hay chuyên gia". Bạn sẽ phân định ranh giới giữa "Tôn trọng sự riêng tư" và "Bảo vệ an toàn tính mạng" như thế nào?',
+    ethicsAnswer: 'Nguyên tắc bất di bất dịch của tư vấn tâm lý là an toàn tính mạng luôn cao hơn bí mật đời tư. Mình sẽ nhẹ nhàng giải thích cho bạn hiểu rằng mình rất trân trọng sự tin tưởng của bạn, nhưng vì yêu quý và mong bạn an toàn, mình không thể để bạn đối mặt nguy hiểm một mình và sẽ chủ động kết nối đường dây nóng chuyên môn hỗ trợ kịp thời.'
+  },
+  {
+    id: 'app-peer-2',
+    applicantId: 'usr-peer-neu',
+    applicantAnonId: '#318',
+    applicantDisplayName: 'Bạn Khóa Trên K21',
+    roleType: 'peer_listener',
+    schoolId: 'neu',
+    schoolName: 'Đại học Kinh Tế Quốc Dân',
+    isGlobalScope: false,
+    status: 'approved',
+    appliedAt: Date.now() - 3600000 * 24,
+    strengths: ['Khủng hoảng định hướng ngành nghề', 'Áp lực học tập & Kỳ vọng gia đình'],
+    motivation: 'Mình từng bế tắc giữa học kinh tế và đam mê nghệ thuật. Rất mong được lắng nghe các bạn khóa dưới trải lòng mà không phán xét.',
+    commitmentAccepted: true,
+    ethicsQuestion: 'Khi lắng nghe một bạn có quan điểm sống, lối sống hoặc hành động hoàn toàn trái ngược với hệ giá trị đạo đức cá nhân của bạn, bạn sẽ làm gì để giữ được thái độ lắng nghe trung lập, thấu cảm mà không áp đặt hay phán xét?',
+    ethicsAnswer: 'Mỗi người sinh ra và lớn lên trong một hoàn cảnh và áp lực khác nhau. Khi mang vai trò người lắng nghe, mình gác lại cái tôi và định kiến riêng để tập trung vào nỗi đau và cảm xúc bên trong của bạn ấy, giúp bạn có một khoảng không an toàn để trút bỏ gánh nặng.'
+  }
+];
+
+export const saveMentorApplicationToFirestore = async (application: PeerMentorApplication) => {
+  try {
+    const appRef = doc(db, 'mentor_applications', application.id);
+    await setDoc(appRef, sanitizeForFirestore({
+      ...application,
+      updatedAt: Date.now()
+    }), { merge: true });
+    return application;
+  } catch (err) {
+    console.error('Save mentor application to Firestore error:', err);
+    throw err;
+  }
+};
+
+export const listenToMentorApplicationsFromFirestore = (
+  callback: (applications: PeerMentorApplication[]) => void
+) => {
+  const appsCol = collection(db, 'mentor_applications');
+  return onSnapshot(appsCol, async (snapshot) => {
+    if (snapshot.empty) {
+      // Seed default initial applications on first run if completely empty
+      try {
+        for (const defaultApp of INITIAL_DEFAULT_MENTOR_APPLICATIONS) {
+          const docRef = doc(db, 'mentor_applications', defaultApp.id);
+          await setDoc(docRef, sanitizeForFirestore(defaultApp));
+        }
+      } catch (seedErr) {
+        console.warn('Initial mentor applications seed warning:', seedErr);
+      }
+      callback(INITIAL_DEFAULT_MENTOR_APPLICATIONS);
+      return;
+    }
+
+    const list: PeerMentorApplication[] = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as PeerMentorApplication);
+    });
+    list.sort((a, b) => (b.appliedAt || 0) - (a.appliedAt || 0));
+    callback(list);
+  }, (err) => {
+    console.warn('Listen to mentor applications in Firestore error:', err);
+  });
+};
+
+export const updateMentorApplicationStatusInFirestore = async (
+  applicationId: string,
+  status: 'approved' | 'rejected',
+  updateData?: Partial<PeerMentorApplication>
+) => {
+  try {
+    const appRef = doc(db, 'mentor_applications', applicationId);
+    await setDoc(appRef, sanitizeForFirestore({
+      status,
+      reviewedAt: Date.now(),
+      ...(updateData || {})
+    }), { merge: true });
+
+    // If applicantId is provided, also sync user's role in their users document in Firestore
+    if (updateData?.applicantId && status === 'approved') {
+      const userRef = doc(db, 'users', updateData.applicantId);
+      const isSpec = updateData.roleType === 'specialist';
+      await setDoc(userRef, sanitizeForFirestore({
+        isPeerMentor: true,
+        isSpecialist: isSpec,
+        mentorRoleType: updateData.roleType,
+        userRole: isSpec ? 'mentor' : 'peer_listener',
+        peerMentorApplication: {
+          id: applicationId,
+          status: 'approved',
+          roleType: updateData.roleType
+        }
+      }), { merge: true });
+    }
+  } catch (err) {
+    console.error('Update mentor application status in Firestore error:', err);
+  }
+};
+
+export const deleteMentorApplicationFromFirestore = async (applicationId: string) => {
+  try {
+    const appRef = doc(db, 'mentor_applications', applicationId);
+    await deleteDoc(appRef);
+  } catch (err) {
+    console.error('Delete mentor application in Firestore error:', err);
+  }
+};
+
+// ==========================================
+// LISTENER REPORTS & SAFETY FLAGS
+// ==========================================
+
+export const saveListenerReportToFirestore = async (report: ListenerReport) => {
+  try {
+    const reportRef = doc(db, 'listener_reports', report.id);
+    await setDoc(reportRef, sanitizeForFirestore({
+      ...report,
+      createdAt: report.createdAt || Date.now()
+    }), { merge: true });
+    return report;
+  } catch (err) {
+    console.error('Save listener report to Firestore error:', err);
+    throw err;
+  }
+};
+
+export const listenToListenerReportsFromFirestore = (
+  callback: (reports: ListenerReport[]) => void
+) => {
+  const reportsCol = collection(db, 'listener_reports');
+  return onSnapshot(reportsCol, (snapshot) => {
+    const list: ListenerReport[] = [];
+    snapshot.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as ListenerReport);
+    });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    callback(list);
+  }, (err) => {
+    console.warn('Listen to listener reports in Firestore error:', err);
+  });
+};
+
+export const updateListenerReportStatusInFirestore = async (
+  reportId: string,
+  status: 'resolved' | 'dismissed'
+) => {
+  try {
+    const repRef = doc(db, 'listener_reports', reportId);
+    await updateDoc(repRef, { status });
+  } catch (err) {
+    console.error('Update listener report status in Firestore error:', err);
+  }
+};
+
 
 
 

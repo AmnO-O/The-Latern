@@ -72,7 +72,19 @@ import {
   createHealingNoteInFirestore,
   likeHealingNoteInFirestore,
   listenToHealingNotesFromFirestore,
-  INITIAL_DEFAULT_HEALING_NOTES
+  INITIAL_DEFAULT_HEALING_NOTES,
+  saveMentorApplicationToFirestore,
+  listenToMentorApplicationsFromFirestore,
+  updateMentorApplicationStatusInFirestore,
+  deleteMentorApplicationFromFirestore,
+  INITIAL_DEFAULT_MENTOR_APPLICATIONS,
+  saveListenerReportToFirestore,
+  listenToListenerReportsFromFirestore,
+  updateListenerReportStatusInFirestore,
+  listenToAppointmentsInFirestore,
+  createAppointmentInFirestore,
+  updateAppointmentStatusInFirestore,
+  deleteAppointmentFromFirestore
 } from './lib/firebase';
 
 export default function App() {
@@ -378,6 +390,9 @@ export default function App() {
 
   const handleSubmitReport = (report: ListenerReport) => {
     setListenerReports(prev => [report, ...prev]);
+    saveListenerReportToFirestore(report).catch(err => {
+      console.warn('Save listener report to Firestore warning:', err);
+    });
   };
 
   const handleResolveReport = (reportId: string, action: 'ban_listener' | 'dismiss') => {
@@ -391,12 +406,19 @@ export default function App() {
       return r;
     }));
 
+    updateListenerReportStatusInFirestore(reportId, action === 'ban_listener' ? 'resolved' : 'dismissed').catch(err => {
+      console.warn('Update report status in Firestore warning:', err);
+    });
+
     if (action === 'ban_listener') {
       const rep = listenerReports.find(r => r.id === reportId);
       if (rep) {
         // Revoke peer mentor application status if found
         setMentorApplications(prev => prev.map(a => {
           if (a.applicantDisplayName === rep.reportedListenerName || a.applicantAnonId === rep.reportedListenerName) {
+            updateMentorApplicationStatusInFirestore(a.id, 'rejected', {
+              rejectionReason: 'Bị tước quyền do vi phạm quy chuẩn an toàn cộng đồng'
+            }).catch(() => {});
             return {
               ...a,
               status: 'rejected',
@@ -497,45 +519,7 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to parse mentor applications from localStorage:', e);
     }
-    return [
-      {
-        id: 'app-spec-1',
-        applicantId: 'usr-spec-hnue',
-        applicantDisplayName: 'Nguyễn Hoàng Minh',
-        applicantEmail: 'minh.nh.psych@hnue.edu.vn',
-        roleType: 'specialist',
-        schoolId: 'hnue',
-        schoolName: 'Đại học Sư phạm Hà Nội',
-        isGlobalScope: true,
-        status: 'pending',
-        appliedAt: Date.now() - 3600000 * 5,
-        strengths: ['Áp lực học tập & Kỳ vọng gia đình', 'Khủng hoảng định hướng ngành nghề', 'Cô đơn & Trầm lắng cảm xúc'],
-        motivation: 'Tôi là Thạc sĩ Tâm lý học lâm sàng với 4 năm kinh nghiệm tham vấn học đường. Tôi mong muốn đồng hành và hỗ trợ giải tỏa áp lực tâm lý cho học sinh sinh viên.',
-        commitmentAccepted: true,
-        qualificationTitle: 'Thạc sĩ Tâm lý học Lâm sàng',
-        specialty: 'Tham vấn khủng hoảng & Rối loạn cảm xúc học đường',
-        certificateImageUrl: 'https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=600&q=80',
-        ethicsQuestion: 'Một bạn ẩn danh tâm sự đang chịu áp lực nặng nề và có suy nghĩ trốn tránh thực tại hoặc làm điều tiêu cực, nhưng nài nỉ bạn "xin hãy giữ bí mật tuyệt đối và đừng nói với bất kỳ ai, kể cả thầy cô hay chuyên gia". Bạn sẽ phân định ranh giới giữa "Tôn trọng sự riêng tư" và "Bảo vệ an toàn tính mạng" như thế nào?',
-        ethicsAnswer: 'Nguyên tắc bất di bất dịch của tư vấn tâm lý là an toàn tính mạng luôn cao hơn bí mật đời tư. Mình sẽ nhẹ nhàng giải thích cho bạn hiểu rằng mình rất trân trọng sự tin tưởng của bạn, nhưng vì yêu quý và mong bạn an toàn, mình không thể để bạn đối mặt nguy hiểm một mình và sẽ chủ động kết nối đường dây nóng chuyên môn hỗ trợ kịp thời.'
-      },
-      {
-        id: 'app-peer-2',
-        applicantId: 'usr-peer-neu',
-        applicantAnonId: '#318',
-        applicantDisplayName: 'Bạn Khóa Trên K21',
-        roleType: 'peer_listener',
-        schoolId: 'neu',
-        schoolName: 'Đại học Kinh Tế Quốc Dân',
-        isGlobalScope: false,
-        status: 'approved',
-        appliedAt: Date.now() - 3600000 * 24,
-        strengths: ['Khủng hoảng định hướng ngành nghề', 'Áp lực học tập & Kỳ vọng gia đình'],
-        motivation: 'Mình từng bế tắc giữa học kinh tế và đam mê nghệ thuật. Rất mong được lắng nghe các bạn khóa dưới trải lòng mà không phán xét.',
-        commitmentAccepted: true,
-        ethicsQuestion: 'Khi lắng nghe một bạn có quan điểm sống, lối sống hoặc hành động hoàn toàn trái ngược với hệ giá trị đạo đức cá nhân của bạn, bạn sẽ làm gì để giữ được thái độ lắng nghe trung lập, thấu cảm mà không áp đặt hay phán xét?',
-        ethicsAnswer: 'Mỗi người sinh ra và lớn lên trong một hoàn cảnh và áp lực khác nhau. Khi mang vai trò người lắng nghe, mình gác lại cái tôi và định kiến riêng để tập trung vào nỗi đau và cảm xúc bên trong của bạn ấy, giúp bạn có một khoảng không an toàn để trút bỏ gánh nặng.'
-      }
-    ];
+    return INITIAL_DEFAULT_MENTOR_APPLICATIONS;
   });
 
   useEffect(() => {
@@ -546,7 +530,8 @@ export default function App() {
     }
   }, [mentorApplications]);
 
-  const handleSaveMentorApplication = (newApp: PeerMentorApplication) => {
+  const handleSaveMentorApplication = async (newApp: PeerMentorApplication) => {
+    // Optimistic local update
     setMentorApplications(prev => {
       const idx = prev.findIndex(a => a.id === newApp.id);
       if (idx >= 0) {
@@ -556,14 +541,24 @@ export default function App() {
       }
       return [newApp, ...prev];
     });
+
+    // Cloud Firestore Sync
+    try {
+      await saveMentorApplicationToFirestore(newApp);
+    } catch (err) {
+      console.warn('Sync mentor application to Firestore warning:', err);
+    }
   };
 
-  const handleApproveMentorApplication = (appId: string, role: 'peer_listener' | 'specialist') => {
+  const handleApproveMentorApplication = async (appId: string, role: 'peer_listener' | 'specialist') => {
+    const targetApp = mentorApplications.find(a => a.id === appId);
+
     setMentorApplications(prev => prev.map(a => {
       if (a.id === appId) {
         return {
           ...a,
           status: 'approved',
+          roleType: role,
           reviewedAt: Date.now()
         };
       }
@@ -580,8 +575,8 @@ export default function App() {
           roleType: role
         } as PeerMentorApplication;
 
-        const matchingApp = mentorApplications.find(a => a.id === appId) || prev.peerMentorApplication;
-        const schoolObj = schools.find(s => s.id === matchingApp?.schoolId) || (matchingApp?.schoolId ? { id: matchingApp.schoolId, name: matchingApp.schoolName, slug: matchingApp.schoolId, type: 'university' as const, studentsCount: 1 } : null);
+        const matchingApp = targetApp || prev.peerMentorApplication;
+        const schoolObj = schools.find(s => s.id === matchingApp?.schoolId) || (matchingApp?.schoolId ? { id: matchingApp.schoolId, name: matchingApp.schoolName, slug: matchingApp.schoolId, type: 'university' as const, letterCount: 0, newCount: 0, verifiedCount: 1, location: 'Toàn Quốc' } : null);
         const existingVerified = prev.verifiedSchools || [];
         const updatedVerified = (schoolObj && !existingVerified.some(s => s.id === schoolObj.id))
           ? [...existingVerified, schoolObj]
@@ -612,9 +607,19 @@ export default function App() {
       isRead: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+
+    // Firestore Sync
+    try {
+      await updateMentorApplicationStatusInFirestore(appId, 'approved', {
+        roleType: role,
+        applicantId: targetApp?.applicantId
+      });
+    } catch (err) {
+      console.warn('Update mentor app status in Firestore warning:', err);
+    }
   };
 
-  const handleRejectMentorApplication = (appId: string, reason?: string) => {
+  const handleRejectMentorApplication = async (appId: string, reason?: string) => {
     setMentorApplications(prev => prev.map(a => {
       if (a.id === appId) {
         return {
@@ -641,6 +646,15 @@ export default function App() {
       }
       return prev;
     });
+
+    // Firestore Sync
+    try {
+      await updateMentorApplicationStatusInFirestore(appId, 'rejected', {
+        rejectionReason: reason || 'Chưa đủ điều kiện xác thực'
+      });
+    } catch (err) {
+      console.warn('Update mentor app status in Firestore warning:', err);
+    }
   };
 
   // Counseling Appointments State (Google Meet & In-Person)
@@ -680,6 +694,7 @@ export default function App() {
 
   const handleScheduleAppointment = (newAppt: CounselingAppointment) => {
     setAppointments(prev => [newAppt, ...prev]);
+    createAppointmentInFirestore(newAppt).catch(err => console.warn('Create appointment error:', err));
     // Send local notification
     const newNotif: LanternNotification = {
       id: `notif-appt-${Date.now()}`,
@@ -698,10 +713,12 @@ export default function App() {
 
   const handleUpdateAppointmentStatus = (appointmentId: string, status: AppointmentStatus) => {
     setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, status } : a));
+    updateAppointmentStatusInFirestore(appointmentId, status).catch(err => console.warn('Update appointment status error:', err));
   };
 
   const handleDeleteAppointment = (appointmentId: string) => {
     setAppointments(prev => prev.filter(a => a.id !== appointmentId));
+    deleteAppointmentFromFirestore(appointmentId).catch(err => console.warn('Delete appointment error:', err));
   };
 
   // User State with local cache restore
@@ -1060,10 +1077,31 @@ export default function App() {
       }
     });
 
+    const unsubscribeMentorApps = listenToMentorApplicationsFromFirestore((updatedApps) => {
+      if (updatedApps && updatedApps.length > 0) {
+        setMentorApplications(updatedApps);
+      }
+    });
+
+    const unsubscribeReports = listenToListenerReportsFromFirestore((updatedReports) => {
+      if (updatedReports && updatedReports.length > 0) {
+        setListenerReports(updatedReports);
+      }
+    });
+
+    const unsubscribeAppointments = listenToAppointmentsInFirestore((updatedAppointments) => {
+      if (updatedAppointments && updatedAppointments.length > 0) {
+        setAppointments(updatedAppointments);
+      }
+    });
+
     return () => {
       if (unsubscribePosts) unsubscribePosts();
       if (unsubscribeSchools) unsubscribeSchools();
       if (unsubscribeHealingNotes) unsubscribeHealingNotes();
+      if (unsubscribeMentorApps) unsubscribeMentorApps();
+      if (unsubscribeReports) unsubscribeReports();
+      if (unsubscribeAppointments) unsubscribeAppointments();
     };
   }, []);
 
@@ -1389,15 +1427,10 @@ export default function App() {
     }));
 
     // Switch to feed for that school or global
-    if (postData.isPublic) {
-      setSelectedSchool(prev => ({
-        ...prev,
-        id: prev.id || 'all-schools',
-        letterCount: posts.length + 1,
-        newCount: (prev.newCount || 0) + 1
-      }));
+    if (postData.schoolId === 'all-schools' || postData.schoolId === 'all' || postData.schoolSlug === 'sanh-chung-public') {
+      setSelectedSchool(PUBLIC_GLOBAL_SCHOOL);
     } else {
-      const targetSchool = schools.find(s => s.id === postData.schoolId || s.name === postData.schoolName) || selectedSchool;
+      const targetSchool = schools.find(s => s.id === postData.schoolId || s.name === postData.schoolName) || (postData.isPublic ? PUBLIC_GLOBAL_SCHOOL : selectedSchool);
       setSelectedSchool({
         ...targetSchool,
         letterCount: (targetSchool.letterCount || 0) + 1,
